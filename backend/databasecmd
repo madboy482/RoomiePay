@@ -1,0 +1,10 @@
+USE SplitwiseDB;
+SHOW TABLES;
+SELECT * FROM user;
+SELECT * FROM login;
+SELECT * FROM register;
+SELECT * FROM `group`;
+SELECT * FROM admin;
+SELECT * FROM member;
+SELECT * FROM expense;
+SELECT * FROM settlements;
