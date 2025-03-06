@@ -1,3 +1,5 @@
+
+Bunny
 USE SplitwiseDB;
 SHOW TABLES;
 SELECT * FROM user;
@@ -8,3 +10,44 @@ SELECT * FROM admin;
 SELECT * FROM member;
 SELECT * FROM expense;
 SELECT * FROM settlements;
+
+
+Tuple Relational Representation
+Here’s how the tuples relate in this database schema:
+
+User (user_id, name, email)
+
+(1, 'Bunny', 'bunny@example.com')
+(2, 'Roommate 1', 'roommate1@example.com')
+(3, 'Roommate 2', 'roommate2@example.com')
+Login (login_id, user_id, username, password_hash)
+
+(1, 1, 'bunny24', 'hashedpassword1')
+(2, 2, 'roommate1', 'hashedpassword2')
+(3, 3, 'roommate2', 'hashedpassword3')
+Register (register_id, user_id, register_date)
+
+(1, 1, '2025-02-28 14:53:13')
+(2, 2, '2025-02-28 14:53:13')
+(3, 3, '2025-02-28 14:53:13')
+Group (group_id, group_name, admin_id, created_at)
+
+(1, 'Hostel Room Expenses', 1, '2025-02-28 14:53:20')
+Admin (admin_id, group_id)
+
+(1, 1)
+Member (member_id, user_id, group_id, joined_at)
+
+(1, 1, 1, '2025-02-28 14:53:33')
+(2, 2, 1, '2025-02-28 14:53:33')
+(3, 3, 1, '2025-02-28 14:53:33')
+Expense (expense_id, group_id, payer_id, amount, description, expense_date)
+
+(1, 1, 1, 210.00, 'Bought groceries', '2025-02-28 14:53:41')
+(2, 1, 2, 300.00, 'Paid electricity bill', '2025-02-28 14:53:41')
+(3, 1, 3, 180.00, 'Bought cleaning supplies', '2025-02-28 14:53:41')
+Settlements (settlement_id, group_id, payer_id, receiver_id, amount, status, settlement_date)
+
+(1, 1, 1, 2, 30.00, 'pending', '2025-02-28 14:53:50')
+(2, 1, 3, 1, 10.00, 'pending', '2025-02-28 14:53:50')
+
