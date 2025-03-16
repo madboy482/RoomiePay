@@ -1,0 +1,136 @@
+USE RoomiePayDB;
+
+-- Create Users table
+CREATE TABLE IF NOT EXISTS Users (
+    UserID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    Password TEXT NOT NULL,  -- Stores hashed passwords
+    Phone VARCHAR(15),
+    JoinDate DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Groups table
+CREATE TABLE IF NOT EXISTS UserGroups (
+    GroupID INT AUTO_INCREMENT PRIMARY KEY,
+    GroupName VARCHAR(100) NOT NULL,
+    Description TEXT,
+    CreationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    InviteCode VARCHAR(20) UNIQUE NOT NULL,
+    CreatedByUserID INT NOT NULL,
+    FOREIGN KEY (CreatedByUserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Create GroupMembers table
+CREATE TABLE IF NOT EXISTS GroupMembers (
+    UserID INT NOT NULL,
+    GroupID INT NOT NULL,
+    IsAdmin BOOLEAN NOT NULL DEFAULT FALSE,
+    JoinDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (UserID, GroupID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE
+);
+
+-- Create Expenses table
+CREATE TABLE IF NOT EXISTS Expenses (
+    ExpenseID INT AUTO_INCREMENT PRIMARY KEY,
+    GroupID INT NOT NULL,
+    PaidByUserID INT NOT NULL,
+    Amount DECIMAL(10,2) NOT NULL CHECK (Amount > 0),
+    Description VARCHAR(255) NOT NULL,
+    Date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    IsSettled BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE,
+    FOREIGN KEY (PaidByUserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Create Settlements table
+CREATE TABLE IF NOT EXISTS Settlements (
+    SettlementID INT AUTO_INCREMENT PRIMARY KEY,
+    GroupID INT NOT NULL,
+    PayerUserID INT NOT NULL,
+    ReceiverUserID INT NOT NULL,
+    Amount DECIMAL(10,2) NOT NULL CHECK (Amount > 0),
+    Date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Status ENUM('Pending', 'Confirmed') DEFAULT 'Pending',
+    PaymentMethod VARCHAR(50),
+    FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE,
+    FOREIGN KEY (PayerUserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (ReceiverUserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Create Invitations table
+CREATE TABLE IF NOT EXISTS Invitations (
+    InvitationID INT AUTO_INCREMENT PRIMARY KEY,
+    GroupID INT NOT NULL,
+    SenderUserID INT NOT NULL,
+    RecipientEmail VARCHAR(100) NOT NULL,
+    Status ENUM('Pending', 'Accepted', 'Rejected') DEFAULT 'Pending',
+    InvitationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ExpiryDate DATETIME,
+    FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE,
+    FOREIGN KEY (SenderUserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Insert sample data if it doesn't already exist
+INSERT INTO Users (Name, Email, Password, Phone, JoinDate) 
+SELECT * FROM (SELECT 'Aryan Singh', 'aryan.singh@gmail.com', 'hashed_password_123', '9876543210', '2024-12-15 14:30:00') AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM Users WHERE Email = 'aryan.singh@gmail.com'
+) LIMIT 1;
+
+INSERT INTO Users (Name, Email, Password, Phone, JoinDate) 
+SELECT * FROM (SELECT 'Priya Sharma', 'priya.sharma@gmail.com', 'hashed_password_456', '8765432109', '2024-12-16 10:45:00') AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM Users WHERE Email = 'priya.sharma@gmail.com'
+) LIMIT 1;
+
+INSERT INTO Users (Name, Email, Password, Phone, JoinDate) 
+SELECT * FROM (SELECT 'Rahul Kumar', 'rahul.kumar@gmail.com', 'hashed_password_789', '7654321098', '2024-12-17 12:15:00') AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM Users WHERE Email = 'rahul.kumar@gmail.com'
+) LIMIT 1;
+
+INSERT INTO Users (Name, Email, Password, Phone, JoinDate) 
+SELECT * FROM (SELECT 'Neha Patel', 'neha.patel@gmail.com', 'hashed_password_101', '6543210987', '2024-12-18 09:30:00') AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM Users WHERE Email = 'neha.patel@gmail.com'
+) LIMIT 1;
+
+INSERT INTO Users (Name, Email, Password, Phone, JoinDate) 
+SELECT * FROM (SELECT 'Vikram Malhotra', 'vikram.malhotra@gmail.com', 'hashed_password_112', '5432109876', '2024-12-19 16:20:00') AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM Users WHERE Email = 'vikram.malhotra@gmail.com'
+) LIMIT 1;
+
+-- Insert sample groups if they don't already exist
+INSERT INTO UserGroups (GroupName, Description, CreationDate, InviteCode, CreatedByUserID)
+SELECT * FROM (SELECT 'Hostel Room 301', 'Group for roommates of Hostel 301', '2025-01-01 08:00:00', 'HR301XYZ', 1) AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM UserGroups WHERE InviteCode = 'HR301XYZ'
+) LIMIT 1;
+
+INSERT INTO UserGroups (GroupName, Description, CreationDate, InviteCode, CreatedByUserID)
+SELECT * FROM (SELECT 'Trip to Goa', 'Expenses for our Goa vacation', '2025-01-05 09:15:00', 'GOATRIP2025', 2) AS tmp
+WHERE NOT EXISTS (
+    SELECT 1 FROM UserGroups WHERE InviteCode = 'GOATRIP2025'
+) LIMIT 1;
+
+-- Create indexes for better performance if they do not exist
+CREATE INDEX IF NOT EXISTS idx_expense_group ON Expenses(GroupID);
+CREATE INDEX IF NOT EXISTS idx_expense_user ON Expenses(PaidByUserID);
+CREATE INDEX IF NOT EXISTS idx_settlement_group ON Settlements(GroupID);
+CREATE INDEX IF NOT EXISTS idx_settlement_payer ON Settlements(PayerUserID);
+CREATE INDEX IF NOT EXISTS idx_settlement_receiver ON Settlements(ReceiverUserID);
+CREATE INDEX IF NOT EXISTS idx_invitation_group ON Invitations(GroupID);
+CREATE INDEX IF NOT EXISTS idx_invitation_sender ON Invitations(SenderUserID);
+CREATE INDEX IF NOT EXISTS idx_invitation_recipient ON Invitations(RecipientEmail);
+
+-- Query to verify data
+SELECT * FROM Users;
+SELECT * FROM UserGroups;
+SELECT * FROM GroupMembers;
+SELECT * FROM Expenses;
+SELECT * FROM Settlements;
+SELECT * FROM Invitations;
