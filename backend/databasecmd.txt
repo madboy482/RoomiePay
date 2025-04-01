@@ -2,7 +2,7 @@
 USE RoomiePayDB;
 
 -- Create Users table
-CREATE TABLE IF NOT EXISTS Users (
+CREATE TABLE Users (
     UserID INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(100) NOT NULL,
     Email VARCHAR(100) UNIQUE NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS Users (
 );
 
 -- Create Groups table
-CREATE TABLE IF NOT EXISTS UserGroups (
+CREATE TABLE UserGroups (
     GroupID INT AUTO_INCREMENT PRIMARY KEY,
     GroupName VARCHAR(100) NOT NULL,
     Description TEXT,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS UserGroups (
 );
 
 -- Create GroupMembers table
-CREATE TABLE IF NOT EXISTS GroupMembers (
+CREATE TABLE GroupMembers (
     UserID INT NOT NULL,
     GroupID INT NOT NULL,
     IsAdmin BOOLEAN NOT NULL DEFAULT FALSE,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS GroupMembers (
 );
 
 -- Create Expenses table
-CREATE TABLE IF NOT EXISTS Expenses (
+CREATE TABLE Expenses (
     ExpenseID INT AUTO_INCREMENT PRIMARY KEY,
     GroupID INT NOT NULL,
     PaidByUserID INT NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS Expenses (
 );
 
 -- Create Settlements table
-CREATE TABLE IF NOT EXISTS Settlements (
+CREATE TABLE Settlements (
     SettlementID INT AUTO_INCREMENT PRIMARY KEY,
     GroupID INT NOT NULL,
     PayerUserID INT NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS Settlements (
 );
 
 -- Create Invitations table
-CREATE TABLE IF NOT EXISTS Invitations (
+CREATE TABLE Invitations (
     InvitationID INT AUTO_INCREMENT PRIMARY KEY,
     GroupID INT NOT NULL,
     SenderUserID INT NOT NULL,
