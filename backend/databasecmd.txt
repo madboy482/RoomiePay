@@ -75,43 +75,107 @@ CREATE TABLE Invitations (
 );
 
 -- Insert sample Users
-INSERT INTO Users (Name, Email, Password, Phone, JoinDate) VALUES
-('Aryan Singh', 'aryan.singh@gmail.com', 'hashed_password_123', '9876543210', '2024-12-15 14:30:00'),
-('Priya Sharma', 'priya.sharma@gmail.com', 'hashed_password_456', '8765432109', '2024-12-16 10:45:00'),
-('Rahul Kumar', 'rahul.kumar@gmail.com', 'hashed_password_789', '7654321098', '2024-12-17 12:15:00'),
-('Neha Patel', 'neha.patel@gmail.com', 'hashed_password_101', '6543210987', '2024-12-18 09:30:00'),
-('Vikram Malhotra', 'vikram.malhotra@gmail.com', 'hashed_password_112', '5432109876', '2024-12-19 16:20:00');
+INSERT INTO Users (UserID, Name, Email, Password, Phone, JoinDate) VALUES
+(1, 'Aryan Singh', 'aryan@gmail.com', 'pwd123', '9876543210', '2025-01-01'),
+(2, 'Priya Sharma', 'priya@gmail.com', 'pwd234', '9876543211', '2025-01-02'),
+(3, 'Rahul Mehra', 'rahul@gmail.com', 'pwd345', '9876543212', '2025-01-03'),
+(4, 'Neha Reddy', 'neha@gmail.com', 'pwd456', '9876543213', '2025-01-04'),
+(5, 'Rohan Verma', 'rohan@gmail.com', 'pwd567', '9876543214', '2025-01-05'),
+(6, 'Simran Kaur', 'simran@gmail.com', 'pwd678', '9876543215', '2025-01-06'),
+(7, 'Ankit Jain', 'ankit@gmail.com', 'pwd789', '9876543216', '2025-01-07'),
+(8, 'Ishita Roy', 'ishita@gmail.com', 'pwd890', '9876543217', '2025-01-08'),
+(9, 'Vikram Das', 'vikram@gmail.com', 'pwd901', '9876543218', '2025-01-09'),
+(10, 'Tanvi Joshi', 'tanvi@gmail.com', 'pwd012', '9876543219', '2025-01-10'),
+(11, 'Harsh Vardhan', 'harsh@gmail.com', 'pwd013', '9876543220', '2025-01-11'),
+(12, 'Megha Tiwari', 'megha@gmail.com', 'pwd014', '9876543221', '2025-01-12'),
+(13, 'Aditya Rao', 'aditya@gmail.com', 'pwd015', '9876543222', '2025-01-13'),
+(14, 'Kritika Bansal', 'kritika@gmail.com', 'pwd016', '9876543223', '2025-01-14'),
+(15, 'Dev Patel', 'dev@gmail.com', 'pwd017', '9876543224', '2025-01-15');
 
 -- Insert sample Groups
-INSERT INTO UserGroups (GroupName, Description, CreationDate, InviteCode, CreatedByUserID) VALUES
-('Hostel Room 301', 'Group for roommates of Hostel 301', '2025-01-01 08:00:00', 'HR301XYZ', 1),
-('Trip to Goa', 'Expenses for our Goa vacation', '2025-01-05 09:15:00', 'GOATRIP2025', 2);
+INSERT INTO UserGroups (GroupID, GroupName, Description, InviteCode, CreatedByUserID) VALUES
+(1, 'Room 101', 'Flatmates sharing expenses', 'INV101', 1),
+(2, 'Trip to Goa', 'Goa vacation group', 'GOA2025', 2),
+(3, 'Startup Project', 'Shared SaaS hosting', 'SAASX1', 3),
+(4, 'Room 202', 'Shared hostel room expenses', 'ROOM202', 4),
+(5, 'Girls Hostel Block C', 'Shared supplies & bills', 'GIRLSC', 6),
+(6, 'Manali Trip', 'Trip planning expenses', 'MANALI24', 7),
+(7, 'PG Food Split', 'Food delivery and groceries', 'FOODPG', 5),
+(8, 'Office Team Lunches', 'Splitting office snacks/lunches', 'OFFLUNCH', 8),
+(9, 'Home Repairs', 'Parent/children house work split', 'HOMEREP', 9),
+(10, 'Exam Time Snacks', 'Tea and midnight Maggie', 'EXAMFUEL', 10),
+(11, 'Internship Expenses', 'Shared cab & metro costs', 'INTERN25', 11),
+(12, 'Birthday Pool', 'Pool funds for birthdays', 'BDAYPOOL', 12),
+(13, 'Netflix Sharing', 'Streaming cost split', 'NETSHARE', 13),
+(14, 'Flat Deposit Return', 'Security deposit calculation', 'FLATSEC', 14),
+(15, 'Festival Celebrations', 'Decorations, sweets etc.', 'FEST2025', 15);
 
 -- Insert sample GroupMembers
 INSERT INTO GroupMembers (UserID, GroupID, IsAdmin) VALUES
-(1, 1, TRUE),
-(2, 1, FALSE),
-(3, 1, FALSE),
-(2, 2, TRUE),
-(4, 2, FALSE),
-(5, 2, FALSE);
+(1, 1, TRUE), (2, 1, FALSE), (3, 1, FALSE),
+(2, 2, TRUE), (4, 2, FALSE), (5, 2, FALSE),
+(3, 3, TRUE), (6, 3, FALSE), (7, 3, FALSE),
+(4, 4, TRUE), (8, 4, FALSE), (9, 4, FALSE),
+(6, 5, TRUE), (10, 5, FALSE), (11, 5, FALSE),
+(7, 6, TRUE), (1, 6, FALSE), (5, 6, FALSE),
+(5, 7, TRUE), (3, 7, FALSE), (11, 7, FALSE),
+(8, 8, TRUE), (9, 8, FALSE), (10, 8, FALSE),
+(9, 9, TRUE), (12, 9, FALSE), (13, 9, FALSE),
+(10, 10, TRUE), (14, 10, FALSE), (15, 10, FALSE);
 
 -- Insert sample Expenses
-INSERT INTO Expenses (GroupID, PaidByUserID, Amount, Description, Date, IsSettled) VALUES
-(1, 1, 1500.00, 'Electricity Bill', '2025-01-10 14:00:00', FALSE),
-(1, 3, 800.00, 'Grocery shopping', '2025-01-12 16:45:00', FALSE),
-(2, 2, 5000.00, 'Hotel Booking', '2025-01-06 10:30:00', FALSE);
+INSERT INTO Expenses (ExpenseID, GroupID, PaidByUserID, Amount, Description, Date, IsSettled) VALUES
+(1, 1, 1, 1200.00, 'Electricity bill', '2025-02-01', FALSE),
+(2, 1, 2, 900.00, 'Groceries', '2025-02-02', FALSE),
+(3, 2, 2, 5400.00, 'Hotel booking', '2025-02-05', TRUE),
+(4, 2, 5, 1800.00, 'Cab from airport', '2025-02-06', FALSE),
+(5, 3, 3, 3200.00, 'Domain & hosting', '2025-02-04', TRUE),
+(6, 4, 4, 1500.00, 'Room cleaning supplies', '2025-02-03', FALSE),
+(7, 5, 6, 400.00, 'Snacks', '2025-02-02', FALSE),
+(8, 6, 7, 8000.00, 'Bus booking', '2025-01-31', TRUE),
+(9, 7, 5, 650.00, 'Milk & Bread', '2025-02-03', FALSE),
+(10, 8, 8, 1100.00, 'Pizza Party', '2025-02-01', TRUE),
+(11, 9, 9, 4300.00, 'Plumbing fix', '2025-02-04', FALSE),
+(12, 10, 10, 300.00, 'Chai & biscuits', '2025-02-01', FALSE),
+(13, 11, 11, 950.00, 'Metro card recharge', '2025-02-02', TRUE),
+(14, 12, 12, 1500.00, 'Cake and balloons', '2025-02-01', FALSE),
+(15, 13, 13, 499.00, 'Netflix monthly', '2025-02-01', TRUE);
 
 -- Insert sample Settlements
-INSERT INTO Settlements (GroupID, PayerUserID, ReceiverUserID, Amount, Date, Status, PaymentMethod) VALUES
-(1, 2, 1, 500.00, '2025-01-15 18:20:00', 'Pending', 'UPI'),
-(1, 3, 1, 400.00, '2025-01-16 11:30:00', 'Confirmed', 'Bank Transfer'),
-(2, 5, 2, 2500.00, '2025-01-07 09:15:00', 'Pending', 'Cash');
+INSERT INTO Settlements (SettlementID, GroupID, PayerUserID, ReceiverUserID, Amount, Date, Status, PaymentMethod) VALUES
+(1, 1, 2, 1, 600.00, '2025-02-10', 'Confirmed', 'UPI'),
+(2, 1, 3, 1, 600.00, '2025-02-11', 'Confirmed', 'Bank Transfer'),
+(3, 2, 4, 2, 1800.00, '2025-02-12', 'Pending', 'Cash'),
+(4, 3, 6, 3, 1600.00, '2025-02-13', 'Confirmed', 'Google Pay'),
+(5, 4, 8, 4, 750.00, '2025-02-14', 'Pending', 'Paytm'),
+(6, 5, 10, 6, 200.00, '2025-02-15', 'Confirmed', 'PhonePe'),
+(7, 6, 1, 7, 2666.66, '2025-02-16', 'Pending', 'UPI'),
+(8, 7, 11, 5, 216.66, '2025-02-17', 'Confirmed', 'Cash'),
+(9, 8, 10, 8, 550.00, '2025-02-18', 'Pending', 'Paytm'),
+(10, 9, 12, 9, 1433.33, '2025-02-19', 'Confirmed', 'Bank Transfer'),
+(11, 10, 14, 10, 100.00, '2025-02-20', 'Confirmed', 'NEFT'),
+(12, 11, 11, 13, 300.00, '2025-02-20', 'Pending', 'UPI'),
+(13, 12, 15, 12, 500.00, '2025-02-21', 'Confirmed', 'Cash'),
+(14, 13, 14, 13, 166.00, '2025-02-22', 'Confirmed', 'Google Pay'),
+(15, 14, 1, 14, 5000.00, '2025-02-23', 'Pending', 'Bank Transfer');
 
 -- Insert sample Invitations
-INSERT INTO Invitations (GroupID, SenderUserID, RecipientEmail, Status, InvitationDate, ExpiryDate) VALUES
-(1, 1, 'example1@gmail.com', 'Pending', '2025-01-08 12:00:00', '2025-01-15 12:00:00'),
-(2, 2, 'example2@gmail.com', 'Accepted', '2025-01-09 14:30:00', '2025-01-16 14:30:00');
+INSERT INTO Invitations (InvitationID, GroupID, SenderUserID, RecipientEmail, Status, InvitationDate, ExpiryDate) VALUES
+(1, 1, 1, 'newroomie@gmail.com', 'Pending', '2025-01-20', '2025-01-27'),
+(2, 2, 2, 'rohan.friend@gmail.com', 'Accepted', '2025-01-21', '2025-01-28'),
+(3, 3, 3, 'techmate@gmail.com', 'Rejected', '2025-01-22', '2025-01-29'),
+(4, 4, 4, 'hostelmate@gmail.com', 'Accepted', '2025-01-23', '2025-01-30'),
+(5, 5, 6, 'hostelbuddy@gmail.com', 'Pending', '2025-01-24', '2025-01-31'),
+(6, 6, 7, 'trekker@gmail.com', 'Accepted', '2025-01-25', '2025-02-01'),
+(7, 7, 5, 'pgmate@gmail.com', 'Pending', '2025-01-26', '2025-02-02'),
+(8, 8, 8, 'colleague@gmail.com', 'Rejected', '2025-01-27', '2025-02-03'),
+(9, 9, 9, 'sister@gmail.com', 'Accepted', '2025-01-28', '2025-02-04'),
+(10, 10, 10, 'studybuddy@gmail.com', 'Pending', '2025-01-29', '2025-02-05'),
+(11, 11, 11, 'internpal@gmail.com', 'Accepted', '2025-01-30', '2025-02-06'),
+(12, 12, 12, 'bdayplanner@gmail.com', 'Rejected', '2025-01-31', '2025-02-07'),
+(13, 13, 13, 'binger@gmail.com', 'Accepted', '2025-02-01', '2025-02-08'),
+(14, 14, 14, 'oldflatmate@gmail.com', 'Pending', '2025-02-02', '2025-02-09'),
+(15, 15, 15, 'festivalpal@gmail.com', 'Accepted', '2025-02-03', '2025-02-10');
 
 -- Create indexes for better performance
 CREATE INDEX idx_expense_group ON Expenses(GroupID);
