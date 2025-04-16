@@ -200,7 +200,7 @@ SELECT * FROM Invitations;
 
 
 
--- Normalization
+-- Normalization (for 2NF)
 -- Step 1: Create new table for join dates
 CREATE TABLE GroupMemberJoinDates (
     GroupID INT NOT NULL,
