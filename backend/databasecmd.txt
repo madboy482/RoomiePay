@@ -1,5 +1,5 @@
 -- Create the database;
-CREATE DATETIME RoomiePayDB;
+CREATE DATABASE RoomiePayDB;
 
 -- Use the database
 USE RoomiePayDB;
