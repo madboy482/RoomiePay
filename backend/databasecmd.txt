@@ -197,3 +197,29 @@ SELECT * FROM GroupMembers;
 SELECT * FROM Expenses;
 SELECT * FROM Settlements;
 SELECT * FROM Invitations;
+
+
+
+-- Normalization
+-- Step 1: Create new table for join dates
+CREATE TABLE GroupMemberJoinDates (
+    GroupID INT NOT NULL,
+    user_id INT NOT NULL,
+    joined_at DATETIME,
+    PRIMARY KEY (GroupID, user_id),
+    FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Step 2: Migrate join date data from GroupMembers to GroupMemberJoinDates
+INSERT INTO GroupMemberJoinDates (GroupID, user_id, joined_at)
+SELECT GroupID, UserID, JoinDate
+FROM GroupMembers;
+
+-- Step 3: Drop the JoinDate column from GroupMembers
+ALTER TABLE GroupMembers
+DROP COLUMN JoinDate;
+
+-- Step 4: Verify the updated table structures
+DESCRIBE GroupMembers;
+DESCRIBE GroupMemberJoinDates;
