@@ -224,6 +224,11 @@ DROP COLUMN JoinDate;
 DESCRIBE GroupMembers;
 DESCRIBE GroupMemberJoinDates;
 
+
+
+
+
+
 -- Start transaction to insert a new expense and corresponding settlement
 START TRANSACTION;
 
@@ -241,6 +246,10 @@ COMMIT;
 -- Optional rollback if you want to undo the above (normally you'd use either COMMIT or ROLLBACK, not both)
 -- ROLLBACK;
 
+
+
+
+
 -- Start transaction and lock a specific row to prevent concurrent updates 2nd [art]
 START TRANSACTION;
 
@@ -252,6 +261,11 @@ UPDATE Expenses SET Amount = 1200.00 WHERE ExpenseID = 5;
 
 -- Commit changes
 COMMIT;
+
+
+
+
+
 
 -- Set highest isolation level to prevent dirty reads and phantom reads 3rd
 SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
@@ -265,6 +279,12 @@ SELECT * FROM Settlements WHERE Status = 'Pending';
 UPDATE Settlements SET Status = 'Confirmed' WHERE SettlementID = 3;
 
 COMMIT;
+
+
+
+
+
+
 
 -- Confirm a specific settlement 3a
 CREATE TABLE RecoveryLogs (
@@ -297,6 +317,12 @@ VALUES (
   '{"Amount":1000.00}', 
   '{"Amount":1200.00}'
 );
+
+
+
+
+
+
 
 -- Track user action for auditing 5th
 INSERT INTO AuditTrail (UserID, Action, AffectedTable, ChangeDescription)
