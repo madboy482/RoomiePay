@@ -223,3 +223,87 @@ DROP COLUMN JoinDate;
 -- Step 4: Verify the updated table structures
 DESCRIBE GroupMembers;
 DESCRIBE GroupMemberJoinDates;
+
+-- Start transaction to insert a new expense and corresponding settlement
+START TRANSACTION;
+
+-- Insert new expense: Bob (user 2) pays for group 1
+INSERT INTO Expenses (GroupID, PaidByUserID, Amount, Description)
+VALUES (1, 2, 1000.00, 'Electricity Bill');
+
+-- Alice (user 1) owes 50% to Bob
+INSERT INTO Settlements (ExpenseID, OwedByUserID, OwedToUserID, Amount, Status)
+VALUES (LAST_INSERT_ID(), 1, 2, 500.00, 'Pending');
+
+-- Commit transaction
+COMMIT;
+
+-- Optional rollback if you want to undo the above (normally you'd use either COMMIT or ROLLBACK, not both)
+-- ROLLBACK;
+
+-- Start transaction and lock a specific row to prevent concurrent updates 2nd [art]
+START TRANSACTION;
+
+-- Lock ExpenseID 5 to ensure no other transaction modifies it
+SELECT * FROM Expenses WHERE ExpenseID = 5 FOR UPDATE;
+
+-- Update the amount
+UPDATE Expenses SET Amount = 1200.00 WHERE ExpenseID = 5;
+
+-- Commit changes
+COMMIT;
+
+-- Set highest isolation level to prevent dirty reads and phantom reads 3rd
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+START TRANSACTION;
+
+-- Check all pending settlements
+SELECT * FROM Settlements WHERE Status = 'Pending';
+
+-- Confirm a specific settlement
+UPDATE Settlements SET Status = 'Confirmed' WHERE SettlementID = 3;
+
+COMMIT;
+
+-- Confirm a specific settlement 3a
+CREATE TABLE RecoveryLogs (
+    LogID INT AUTO_INCREMENT PRIMARY KEY,
+    OperationType VARCHAR(50),
+    TableName VARCHAR(50),
+    PrimaryKeyAffected VARCHAR(100),
+    OldValue TEXT,
+    NewValue TEXT,
+    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Confirm a specific settlement 3b
+CREATE TABLE AuditTrail (
+    AuditID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT,
+    Action VARCHAR(100),
+    AffectedTable VARCHAR(50),
+    ChangeDescription TEXT,
+    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Log the update manually for recovery 4th
+INSERT INTO RecoveryLogs (OperationType, TableName, PrimaryKeyAffected, OldValue, NewValue)
+VALUES (
+  'UPDATE', 
+  'Expenses', 
+  'ExpenseID=2', 
+  '{"Amount":1000.00}', 
+  '{"Amount":1200.00}'
+);
+
+-- Track user action for auditing 5th
+INSERT INTO AuditTrail (UserID, Action, AffectedTable, ChangeDescription)
+VALUES (
+  2,
+  'Updated Expense Amount',
+  'Expenses',
+  'Changed amount of ExpenseID=2 from 1000.00 to 1200.00'
+);
+
