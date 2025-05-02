@@ -28,7 +28,7 @@ class GroupMember(Base):
     UserID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), primary_key=True)
     GroupID = Column(Integer, ForeignKey("UserGroups.GroupID", ondelete="CASCADE"), primary_key=True)
     IsAdmin = Column(Boolean, default=False, nullable=False)
-    JoinDate = Column(DateTime, default=func.now())
+    joindate = Column(DateTime, server_default=func.current_timestamp())  # Changed to match DB schema
 
 class Expense(Base):
     __tablename__ = "Expenses"
