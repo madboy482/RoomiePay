@@ -686,9 +686,11 @@ async def finalize_group_splits(
                 ReceiverUserID=max_creditor[0],
                 Amount=amount,
                 Status='Pending',
-                DueDate=due_date
+                DueDate=due_date,
+                PaymentDate=None  # Explicitly set PaymentDate to None for new settlements
             )
             db.add(settlement)
+            db.flush()  # Flush to get the SettlementID
             
             # Create notification for the payer
             notification = models.Notification(
@@ -698,9 +700,14 @@ async def finalize_group_splits(
             )
             db.add(notification)
 
+            # Get group name
+            group_name = db.query(models.UserGroup.GroupName)\
+                .filter(models.UserGroup.GroupID == group_id)\
+                .scalar()
+
             # Create a DetailedSettlement object for the response
             detailed_settlement = schemas.DetailedSettlement(
-                SettlementID=settlement.SettlementID,
+                SettlementID=settlement.SettlementID,  # Now we have the actual SettlementID
                 GroupID=group_id,
                 PayerUserID=max_debtor[0],
                 ReceiverUserID=max_creditor[0],
@@ -708,11 +715,10 @@ async def finalize_group_splits(
                 Status='Pending',
                 Date=datetime.utcnow(),
                 DueDate=due_date,
+                PaymentDate=None,  # Explicitly include PaymentDate
                 PayerName=member_names[max_debtor[0]],
                 ReceiverName=member_names[max_creditor[0]],
-                GroupName=db.query(models.UserGroup.GroupName)
-                    .filter(models.UserGroup.GroupID == group_id)
-                    .scalar()
+                GroupName=group_name
             )
             settlements.append(detailed_settlement)
 
