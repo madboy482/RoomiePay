@@ -8,14 +8,17 @@ import {
     getGroupExpenses,
     getGroupBalances,
     addExpense,
-    getSettlementSummary
+    getSettlementSummary,
+    setSettlementPeriod
 } from '../services/api';
+import SettlementConfig from './SettlementConfig';
 
 const Group = () => {
     const { groupId } = useParams();
     const [expenses, setExpenses] = useState([]);
     const [balances, setBalances] = useState({ Members: [] });
     const [openAddExpense, setOpenAddExpense] = useState(false);
+    const [openSettleConfig, setOpenSettleConfig] = useState(false);
     const [timeFilter, setTimeFilter] = useState('all');
     const [settlementSummary, setSettlementSummary] = useState(null);
     const [expenseForm, setExpenseForm] = useState({
@@ -78,13 +81,28 @@ const Group = () => {
         }
     };
 
+    const handleSettlementPeriodSave = async (period) => {
+        try {
+            await setSettlementPeriod(groupId, period);
+            alert('Settlement period configured successfully');
+        } catch (error) {
+            console.error('Failed to set settlement period:', error);
+            alert('Failed to configure settlement period');
+        }
+    };
+
     return (
         <Box p={3}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4">Group Expenses</Typography>
-                <Button variant="contained" onClick={() => setOpenAddExpense(true)}>
-                    Add Expense
-                </Button>
+                <Box>
+                    <Button variant="outlined" onClick={() => setOpenSettleConfig(true)} sx={{ mr: 1 }}>
+                        Configure Settlements
+                    </Button>
+                    <Button variant="contained" onClick={() => setOpenAddExpense(true)}>
+                        Add Expense
+                    </Button>
+                </Box>
             </Box>
 
             {/* Time Filter */}
@@ -195,6 +213,13 @@ const Group = () => {
                     </form>
                 </Box>
             </Dialog>
+
+            {/* Add Settlement Config Dialog */}
+            <SettlementConfig
+                open={openSettleConfig}
+                onClose={() => setOpenSettleConfig(false)}
+                onSave={handleSettlementPeriodSave}
+            />
         </Box>
     );
 };
