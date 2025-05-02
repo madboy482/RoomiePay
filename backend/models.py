@@ -49,8 +49,9 @@ class Settlement(Base):
     ReceiverUserID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), nullable=False)
     Amount = Column(Numeric(10, 2), nullable=False)
     Date = Column(DateTime, default=func.now())
-    Status = Column(Enum("Pending", "Confirmed", name="settlement_status"), default="Pending")
+    Status = Column(Enum("Pending", "Confirmed", "Overdue", name="settlement_status"), default="Pending")
     PaymentMethod = Column(String(50))
+    DueDate = Column(DateTime, nullable=True)
 
 class Invitation(Base):
     __tablename__ = "Invitations"
@@ -62,3 +63,21 @@ class Invitation(Base):
     Status = Column(Enum("Pending", "Accepted", "Rejected", name="invitation_status"), default="Pending")
     InvitationDate = Column(DateTime, default=func.now())
     ExpiryDate = Column(DateTime)
+
+class Notification(Base):
+    __tablename__ = "Notifications"
+    
+    NotificationID = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    UserID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), nullable=False)
+    Message = Column(String(255), nullable=False)
+    Type = Column(String(50), nullable=False)
+    IsRead = Column(Boolean, default=False)
+    CreatedAt = Column(DateTime, default=func.now())
+
+class SettlementPeriod(Base):
+    __tablename__ = "SettlementPeriods"
+    
+    GroupID = Column(Integer, ForeignKey("UserGroups.GroupID", ondelete="CASCADE"), primary_key=True)
+    Period = Column(String(10), nullable=False)  # "1h", "1d", "1w", "1m"
+    LastSettlement = Column(DateTime, nullable=True)
+    NextSettlement = Column(DateTime, nullable=True)
