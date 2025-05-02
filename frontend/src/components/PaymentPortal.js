@@ -59,6 +59,9 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
 
     if (!settlement) return null;
 
+    // Convert Amount to number for toFixed
+    const amount = Number(settlement.Amount);
+
     if (showConfirmation) {
         return (
             <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -68,7 +71,7 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
                             Payment Successful!
                         </Typography>
                         <Typography variant="body1">
-                            Amount: ${settlement.Amount.toFixed(2)}
+                            Amount: ${amount.toFixed(2)}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                             Transaction ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}
@@ -103,7 +106,7 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
                                         Amount Due:
                                     </Typography>
                                     <Typography variant="h5" color="primary.main">
-                                        ${settlement.Amount.toFixed(2)}
+                                        ${amount.toFixed(2)}
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={6}>
@@ -190,7 +193,7 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
                     disabled={loading || !paymentDetails}
                     startIcon={loading && <CircularProgress size={20} />}
                 >
-                    Pay ${settlement.Amount.toFixed(2)}
+                    Pay ${amount.toFixed(2)}
                 </Button>
             </DialogActions>
         </Dialog>
