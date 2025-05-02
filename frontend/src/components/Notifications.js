@@ -6,14 +6,23 @@ import {
     MenuItem,
     ListItemText,
     Typography,
-    Divider
+    Divider,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import { getNotifications, markNotificationRead } from '../services/api';
+import { getNotifications, markNotificationRead, confirmSettlement } from '../services/api';
 
 const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
     const [anchorEl, setAnchorEl] = useState(null);
+    const [selectedNotification, setSelectedNotification] = useState(null);
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('');
 
     useEffect(() => {
         loadNotifications();
@@ -40,11 +49,33 @@ const Notifications = () => {
     };
 
     const handleNotificationClick = async (notification) => {
+        if (notification.Type === 'SETTLEMENT_DUE') {
+            setSelectedNotification(notification);
+            setShowPaymentDialog(true);
+        } else {
+            await markNotificationAsRead(notification);
+        }
+    };
+
+    const markNotificationAsRead = async (notification) => {
         try {
             await markNotificationRead(notification.NotificationID);
-            loadNotifications(); // Reload to update the unread count
+            loadNotifications();
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
+        }
+    };
+
+    const handlePayment = async () => {
+        try {
+            await confirmSettlement(selectedNotification.SettlementID, paymentMethod);
+            await markNotificationAsRead(selectedNotification);
+            setShowPaymentDialog(false);
+            setPaymentMethod('');
+            loadNotifications();
+        } catch (error) {
+            console.error('Failed to confirm payment:', error);
+            alert('Failed to confirm payment');
         }
     };
 
@@ -57,6 +88,7 @@ const Notifications = () => {
                     <NotificationsIcon />
                 </Badge>
             </IconButton>
+            
             <Menu
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
@@ -75,17 +107,28 @@ const Notifications = () => {
                 ) : (
                     notifications.map((notification) => (
                         <React.Fragment key={notification.NotificationID}>
-                            <MenuItem onClick={() => handleNotificationClick(notification)}>
+                            <MenuItem 
+                                onClick={() => handleNotificationClick(notification)}
+                                style={{
+                                    backgroundColor: notification.IsRead ? '#f5f5f5' : 'white'
+                                }}
+                            >
                                 <ListItemText
                                     primary={notification.Message}
                                     secondary={
                                         <Typography variant="caption" color="textSecondary">
                                             {new Date(notification.CreatedAt).toLocaleString()}
+                                            {notification.Type === 'SETTLEMENT_DUE' && (
+                                                <Typography
+                                                    component="span"
+                                                    color="error"
+                                                    style={{ marginLeft: 8 }}
+                                                >
+                                                    • Payment Required
+                                                </Typography>
+                                            )}
                                         </Typography>
                                     }
-                                    style={{
-                                        color: notification.IsRead ? 'text.secondary' : 'inherit'
-                                    }}
                                 />
                             </MenuItem>
                             <Divider />
@@ -93,6 +136,34 @@ const Notifications = () => {
                     ))
                 )}
             </Menu>
+
+            <Dialog open={showPaymentDialog} onClose={() => setShowPaymentDialog(false)}>
+                <DialogTitle>Confirm Payment</DialogTitle>
+                <DialogContent>
+                    <Typography gutterBottom>
+                        {selectedNotification?.Message}
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        label="Payment Method"
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        placeholder="e.g., UPI, Bank Transfer, Cash"
+                        required
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
+                    <Button 
+                        onClick={handlePayment}
+                        variant="contained"
+                        disabled={!paymentMethod}
+                    >
+                        Confirm Payment
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 };
