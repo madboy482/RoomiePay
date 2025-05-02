@@ -91,6 +91,8 @@ class Settlement(SettlementBase):
 class DetailedSettlement(Settlement):
     Payer: User
     Receiver: User
+    PayerName: str
+    ReceiverName: str
     
     class Config:
         from_attributes = True
