@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import Group from './components/Group';
 import Notifications from './components/Notifications';
 import Settlements from './components/Settlements';
+import ProfileMenu from './components/ProfileMenu';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -28,7 +29,10 @@ const PrivateLayout = ({ children }) => {
           </Typography>
           <Button color="inherit" href="/dashboard">Dashboard</Button>
           <Button color="inherit" href="/settlements">Settlements</Button>
-          <Notifications />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Notifications />
+            <ProfileMenu />
+          </Box>
         </Toolbar>
       </AppBar>
       {children}
