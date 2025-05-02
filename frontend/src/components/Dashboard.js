@@ -9,6 +9,8 @@ const Dashboard = () => {
     const [openJoin, setOpenJoin] = useState(false);
     const [groupForm, setGroupForm] = useState({ GroupName: '', Description: '' });
     const [inviteCode, setInviteCode] = useState('');
+    const [newGroupInviteCode, setNewGroupInviteCode] = useState('');
+    const [showInviteCode, setShowInviteCode] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -27,8 +29,9 @@ const Dashboard = () => {
     const handleCreateGroup = async (e) => {
         e.preventDefault();
         try {
-            await createGroup(groupForm);
-            setOpenCreate(false);
+            const response = await createGroup(groupForm);
+            setNewGroupInviteCode(response.data.InviteCode);
+            setShowInviteCode(true);
             loadGroups();
         } catch (error) {
             alert('Failed to create group');
@@ -83,31 +86,68 @@ const Dashboard = () => {
             </Grid>
 
             {/* Create Group Dialog */}
-            <Dialog open={openCreate} onClose={() => setOpenCreate(false)}>
+            <Dialog open={openCreate} onClose={() => {
+                setOpenCreate(false);
+                setShowInviteCode(false);
+            }}>
                 <Box p={3} width={300}>
-                    <Typography variant="h6" gutterBottom>Create New Group</Typography>
-                    <form onSubmit={handleCreateGroup}>
-                        <TextField
-                            fullWidth
-                            margin="normal"
-                            label="Group Name"
-                            value={groupForm.GroupName}
-                            onChange={(e) => setGroupForm({ ...groupForm, GroupName: e.target.value })}
-                            required
-                        />
-                        <TextField
-                            fullWidth
-                            margin="normal"
-                            label="Description"
-                            value={groupForm.Description}
-                            onChange={(e) => setGroupForm({ ...groupForm, Description: e.target.value })}
-                            multiline
-                            rows={3}
-                        />
-                        <Button type="submit" fullWidth variant="contained" sx={{ mt: 2 }}>
-                            Create
-                        </Button>
-                    </form>
+                    {!showInviteCode ? (
+                        <>
+                            <Typography variant="h6" gutterBottom>Create New Group</Typography>
+                            <form onSubmit={handleCreateGroup}>
+                                <TextField
+                                    fullWidth
+                                    margin="normal"
+                                    label="Group Name"
+                                    value={groupForm.GroupName}
+                                    onChange={(e) => setGroupForm({ ...groupForm, GroupName: e.target.value })}
+                                    required
+                                />
+                                <TextField
+                                    fullWidth
+                                    margin="normal"
+                                    label="Description"
+                                    value={groupForm.Description}
+                                    onChange={(e) => setGroupForm({ ...groupForm, Description: e.target.value })}
+                                    multiline
+                                    rows={3}
+                                />
+                                <Button type="submit" fullWidth variant="contained" sx={{ mt: 2 }}>
+                                    Create
+                                </Button>
+                            </form>
+                        </>
+                    ) : (
+                        <Box>
+                            <Typography variant="h6" gutterBottom>Group Created!</Typography>
+                            <Typography variant="body1" gutterBottom>
+                                Share this invite code with others:
+                            </Typography>
+                            <Paper 
+                                elevation={2} 
+                                sx={{ 
+                                    p: 2, 
+                                    my: 2, 
+                                    backgroundColor: '#f5f5f5',
+                                    textAlign: 'center',
+                                    fontSize: '1.2em',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                {newGroupInviteCode}
+                            </Paper>
+                            <Button 
+                                fullWidth 
+                                variant="contained" 
+                                onClick={() => {
+                                    setOpenCreate(false);
+                                    setShowInviteCode(false);
+                                }}
+                            >
+                                Close
+                            </Button>
+                        </Box>
+                    )}
                 </Box>
             </Dialog>
 
