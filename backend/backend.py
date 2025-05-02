@@ -563,6 +563,83 @@ async def mark_notification_read(
     db.commit()
     return {"message": "Notification marked as read"}
 
+@app.post("/groups/{group_id}/finalize-splits", response_model=List[schemas.Settlement])
+async def finalize_group_splits(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    # Verify user is admin in group
+    member = db.query(models.GroupMember)\
+        .filter(
+            models.GroupMember.GroupID == group_id,
+            models.GroupMember.UserID == current_user.UserID,
+            models.GroupMember.IsAdmin == True
+        ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Must be group admin to finalize splits")
+    
+    # Get all unsettled expenses
+    expenses = db.query(models.Expense)\
+        .filter(
+            models.Expense.GroupID == group_id,
+            models.Expense.IsSettled == False
+        ).all()
+    
+    if not expenses:
+        raise HTTPException(status_code=400, detail="No unsettled expenses to finalize")
+    
+    # Get all members
+    members = db.query(models.GroupMember)\
+        .filter(models.GroupMember.GroupID == group_id)\
+        .all()
+    
+    # Calculate total paid by each person
+    total_paid = {}
+    for expense in expenses:
+        total_paid[expense.PaidByUserID] = total_paid.get(expense.PaidByUserID, Decimal('0')) + Decimal(str(expense.Amount))
+    
+    # Calculate equal share per person
+    total_amount = sum(total_paid.values())
+    share_per_person = total_amount / Decimal(str(len(members)))
+    
+    # Calculate net balances
+    settlements = []
+    net_balances = {m.UserID: total_paid.get(m.UserID, Decimal('0')) - share_per_person for m in members}
+    
+    # While there are unresolved balances
+    while any(abs(bal) > Decimal('0.01') for bal in net_balances.values()):
+        # Find max creditor and debtor
+        max_debtor = max(net_balances.items(), key=lambda x: x[1] if x[1] < 0 else -Decimal('inf'))
+        max_creditor = max(net_balances.items(), key=lambda x: x[1] if x[1] > 0 else -Decimal('inf'))
+        
+        # Calculate settlement amount
+        amount = min(abs(max_debtor[1]), max_creditor[1])
+        
+        if amount > Decimal('0'):
+            # Create settlement
+            settlement = models.Settlement(
+                GroupID=group_id,
+                PayerUserID=max_debtor[0],
+                ReceiverUserID=max_creditor[0],
+                Amount=amount,
+                Status='Pending',
+                DueDate=datetime.utcnow() + timedelta(days=7)
+            )
+            db.add(settlement)
+            settlements.append(settlement)
+            
+            # Update balances
+            net_balances[max_debtor[0]] += amount
+            net_balances[max_creditor[0]] -= amount
+    
+    # Mark all expenses as settled
+    for expense in expenses:
+        expense.IsSettled = True
+    
+    db.commit()
+    return settlements
+
 async def check_settlements(background_tasks: BackgroundTasks):
     while True:
         try:
