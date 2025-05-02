@@ -2,3 +2,5 @@
  cd backend; pip install fastapi uvicorn sqlalchemy pymysql python-jose[cryptography] passlib[bcrypt] python-multipart python-dotenv pydantic email-validator
 cd backend; uvicorn backend:app --reload
 pip install mysql-connector-python
+npm install
+npm start
