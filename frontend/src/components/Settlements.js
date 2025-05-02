@@ -14,7 +14,7 @@ import {
     TextField,
     Divider
 } from '@mui/material';
-import { getPendingSettlements, confirmSettlement } from '../services/api';
+import { getUnpaidSettlements, confirmSettlement } from '../services/api';
 
 const Settlements = () => {
     const [settlements, setSettlements] = useState([]);
@@ -29,7 +29,7 @@ const Settlements = () => {
 
     const loadSettlements = async () => {
         try {
-            const response = await getPendingSettlements(currentUser.UserID);
+            const response = await getUnpaidSettlements(currentUser.UserID);
             setSettlements(response.data);
         } catch (error) {
             console.error('Failed to load settlements:', error);
@@ -56,7 +56,7 @@ const Settlements = () => {
     return (
         <Box p={3}>
             <Typography variant="h4" gutterBottom>
-                Pending Settlements
+                Your Settlements
             </Typography>
 
             <List>
@@ -73,8 +73,8 @@ const Settlements = () => {
                                     <>
                                         <Typography component="span" variant="body2">
                                             {settlement.PayerUserID === currentUser.UserID ? 
-                                                'You need to pay' : 
-                                                'You will receive payment'}
+                                                `You need to pay ${settlement.ReceiverName}` : 
+                                                `You will receive payment from ${settlement.PayerName}`}
                                         </Typography>
                                         <br />
                                         <Typography component="span" variant="body2">
