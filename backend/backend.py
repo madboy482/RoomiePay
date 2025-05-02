@@ -3,14 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Optional
-import models, schemas, security
+import models, schemas
+from security import get_current_user, get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from database import engine, get_db
 import random
 import string
 from datetime import datetime, timedelta
 from decimal import Decimal
 import asyncio
-from security import ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -58,7 +58,7 @@ async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db))
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    hashed_password = security.get_password_hash(user.Password)
+    hashed_password = get_password_hash(user.Password)
     db_user = models.User(
         Name=user.Name,
         Email=user.Email,
@@ -73,14 +73,14 @@ async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db))
 @app.post("/token")
 async def login(user_data: schemas.UserLogin, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.Email == user_data.Email).first()
-    if not user or not security.verify_password(user_data.Password, user.Password):
+    if not user or not verify_password(user_data.Password, user.Password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = security.create_access_token(
+    access_token = create_access_token(
         data={"sub": user.Email},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -99,7 +99,7 @@ async def login(user_data: schemas.UserLogin, db: Session = Depends(get_db)):
 async def create_group(
     group: schemas.GroupCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     db_group = models.UserGroup(
         GroupName=group.GroupName,
@@ -125,7 +125,7 @@ async def create_group(
 @app.get("/groups", response_model=List[schemas.Group])
 async def get_user_groups(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     member_groups = db.query(models.UserGroup)\
         .join(models.GroupMember)\
@@ -138,7 +138,7 @@ async def get_user_groups(
 async def create_expense(
     expense: schemas.ExpenseCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is in group
     member = db.query(models.GroupMember)\
@@ -169,7 +169,7 @@ async def get_group_expenses(
     end_date: Optional[datetime] = None,
     period: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is in group
     member = db.query(models.GroupMember)\
@@ -219,7 +219,7 @@ async def get_group_expenses(
 async def get_group_balances(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is in group
     member = db.query(models.GroupMember)\
@@ -285,7 +285,7 @@ async def get_group_balances(
 async def create_split_expense(
     expense: schemas.SplitExpense,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is in group
     member = db.query(models.GroupMember)\
@@ -355,7 +355,7 @@ async def create_split_expense(
 async def get_pending_settlements(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     if user_id != current_user.UserID:
         raise HTTPException(status_code=403, detail="Can only view your own settlements")
@@ -389,7 +389,7 @@ async def get_pending_settlements(
 async def create_settlement(
     settlement: schemas.SettlementCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is in group
     member = db.query(models.GroupMember)\
@@ -410,7 +410,7 @@ async def create_settlement(
 async def confirm_settlement(
     settlement_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     settlement = db.query(models.Settlement)\
         .filter(models.Settlement.SettlementID == settlement_id)\
@@ -432,7 +432,7 @@ async def get_settlements_summary(
     end_date: Optional[datetime] = None,
     period: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is in group
     member = db.query(models.GroupMember)\
@@ -479,7 +479,7 @@ async def get_settlements_summary(
 async def create_invitation(
     invitation: schemas.InvitationCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is admin in group
     member = db.query(models.GroupMember)\
@@ -505,7 +505,7 @@ async def create_invitation(
 async def join_group(
     invite_code: str,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     group = db.query(models.UserGroup)\
         .filter(models.UserGroup.InviteCode == invite_code)\
@@ -535,7 +535,7 @@ async def set_settlement_period(
     group_id: int,
     period: str,  # "1h", "1d", "1w", "1m"
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is admin in group
     member = db.query(models.GroupMember)\
@@ -588,7 +588,7 @@ async def set_settlement_period(
 @app.get("/notifications", response_model=List[schemas.Notification])
 async def get_notifications(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     notifications = db.query(models.Notification)\
         .filter(
@@ -601,7 +601,7 @@ async def get_notifications(
 async def mark_notification_read(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     notification = db.query(models.Notification)\
         .filter(
@@ -620,7 +620,7 @@ async def mark_notification_read(
 async def finalize_group_splits(
     group_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Verify user is in group
     member = db.query(models.GroupMember)\
@@ -744,7 +744,7 @@ async def process_payment(
     settlement_id: int,
     payment_data: schemas.PaymentProcess,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     # Get the settlement
     settlement = db.query(models.Settlement)\
@@ -753,9 +753,6 @@ async def process_payment(
     
     if not settlement:
         raise HTTPException(status_code=404, detail="Settlement not found")
-    
-    if settlement.PayerUserID != current_user.UserID:
-        raise HTTPException(status_code=403, detail="Only the payer can process this payment")
     
     if settlement.Status == "Confirmed":
         raise HTTPException(status_code=400, detail="Settlement has already been confirmed")

@@ -91,7 +91,7 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-            <DialogTitle>Payment Portal</DialogTitle>
+            <DialogTitle>Payment Details</DialogTitle>
             <DialogContent>
                 <Grid container spacing={3}>
                     {/* Payment Summary */}
@@ -101,26 +101,39 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
                                 Payment Summary
                             </Typography>
                             <Grid container spacing={2}>
+                                <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        You owe:
+                                    </Typography>
+                                    <Typography variant="h4" color="error">
+                                        ${amount.toFixed(2)}
+                                    </Typography>
+                                </Grid>
                                 <Grid item xs={6}>
                                     <Typography variant="body2" color="text.secondary">
-                                        Amount Due:
+                                        To:
                                     </Typography>
-                                    <Typography variant="h5" color="primary.main">
-                                        ${amount.toFixed(2)}
+                                    <Typography variant="body1" fontWeight="bold">
+                                        {settlement.ReceiverName}
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={6}>
                                     <Typography variant="body2" color="text.secondary">
                                         Due Date:
                                     </Typography>
-                                    <Typography variant="body1">
+                                    <Typography variant="body1" color={
+                                        new Date(settlement.DueDate) < new Date() ? "error" : "inherit"
+                                    }>
                                         {new Date(settlement.DueDate).toLocaleDateString()}
+                                        {new Date(settlement.DueDate) < new Date() && " (Overdue)"}
                                     </Typography>
                                 </Grid>
                                 <Grid item xs={12}>
-                                    <Divider sx={{ my: 1 }} />
-                                    <Typography variant="body2">
-                                        To: {settlement.ReceiverName}
+                                    <Typography variant="body2" color="text.secondary">
+                                        Group:
+                                    </Typography>
+                                    <Typography variant="body1">
+                                        {settlement.GroupName}
                                     </Typography>
                                 </Grid>
                             </Grid>
@@ -192,6 +205,7 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
                     onClick={handlePaymentSubmit}
                     disabled={loading || !paymentDetails}
                     startIcon={loading && <CircularProgress size={20} />}
+                    color="primary"
                 >
                     Pay ${amount.toFixed(2)}
                 </Button>
