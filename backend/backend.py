@@ -59,7 +59,15 @@ async def login(user_data: schemas.UserLogin, db: Session = Depends(get_db)):
     access_token = security.create_access_token(
         data={"sub": user.Email}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": {
+            "UserID": user.UserID,
+            "Name": user.Name,
+            "Email": user.Email
+        }
+    }
 
 # Group endpoints
 @app.post("/groups", response_model=schemas.Group)
