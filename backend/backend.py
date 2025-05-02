@@ -616,13 +616,13 @@ async def mark_notification_read(
     db.commit()
     return {"message": "Notification marked as read"}
 
-@app.post("/groups/{group_id}/finalize-splits", response_model=List[schemas.Settlement])
+@app.post("/groups/{group_id}/finalize-splits", response_model=List[schemas.DetailedSettlement])
 async def finalize_group_splits(
     group_id: int,
-    include_all: bool = True,  # Show all expenses by default
     db: Session = Depends(get_db),
     current_user: models.User = Depends(security.get_current_user)
 ):
+    # Verify user is in group
     member = db.query(models.GroupMember)\
         .filter(
             models.GroupMember.GroupID == group_id,
@@ -630,73 +630,146 @@ async def finalize_group_splits(
         ).first()
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
-    
-    # Get all expenses based on include_all parameter
-    expenses_query = db.query(models.Expense)\
-        .filter(models.Expense.GroupID == group_id)
-    
-    if not include_all:
-        expenses_query = expenses_query.filter(models.Expense.IsSettled == False)
-    
-    expenses = expenses_query.all()
-    
+
+    # Get all unsettled expenses
+    expenses = db.query(models.Expense)\
+        .filter(
+            models.Expense.GroupID == group_id,
+            models.Expense.IsSettled == False
+        ).all()
+
     if not expenses:
-        # Return existing settlements instead of error
-        settlements = db.query(models.Settlement)\
-            .filter(models.Settlement.GroupID == group_id)\
-            .order_by(models.Settlement.Date.desc())\
-            .all()
-        return settlements
-    
-    # Calculate settlements from expenses
+        raise HTTPException(status_code=404, detail="No unsettled expenses found")
+
+    # Get all members
     members = db.query(models.GroupMember)\
+        .join(models.User)\
+        .add_columns(models.User.Name)\
         .filter(models.GroupMember.GroupID == group_id)\
         .all()
-    
+
+    # Calculate total paid by each person
     total_paid = {}
     for expense in expenses:
         if expense.PaidByUserID not in total_paid:
             total_paid[expense.PaidByUserID] = Decimal('0')
         total_paid[expense.PaidByUserID] += expense.Amount
-    
+
+    # Calculate equal share per person
     total_amount = sum(total_paid.values())
     share_per_person = total_amount / Decimal(str(len(members)))
-    
-    # Calculate who owes what
+
+    # Calculate net balances for each member
     settlements = []
     net_balances = {}
-    for member in members:
+    member_names = {member.UserID: name for member, name in members}
+
+    for member, _ in members:
         net_balances[member.UserID] = total_paid.get(member.UserID, Decimal('0')) - share_per_person
-    
+
     # Create settlements for non-zero balances
     while any(abs(bal) > Decimal('0.01') for bal in net_balances.values()):
         # Find biggest debtor and creditor
         max_debtor = max(net_balances.items(), key=lambda x: x[1] if x[1] < 0 else -Decimal('inf'))
         max_creditor = max(net_balances.items(), key=lambda x: x[1] if x[1] > 0 else -Decimal('inf'))
-        
+
         amount = min(abs(max_debtor[1]), max_creditor[1])
-        
+
         if amount > Decimal('0'):
+            # Set due date to 7 days from now
+            due_date = datetime.utcnow() + timedelta(days=7)
+            
+            # Create settlement
             settlement = models.Settlement(
                 GroupID=group_id,
                 PayerUserID=max_debtor[0],
                 ReceiverUserID=max_creditor[0],
                 Amount=amount,
                 Status='Pending',
-                DueDate=datetime.utcnow() + timedelta(days=7)
+                DueDate=due_date
             )
             db.add(settlement)
-            settlements.append(settlement)
             
+            # Create notification for the payer
+            notification = models.Notification(
+                UserID=max_debtor[0],
+                Message=f"You owe ${amount:.2f} to {member_names[max_creditor[0]]}. Due by {due_date.strftime('%Y-%m-%d')}",
+                Type="SETTLEMENT_DUE"
+            )
+            db.add(notification)
+
+            # Create a DetailedSettlement object for the response
+            detailed_settlement = schemas.DetailedSettlement(
+                SettlementID=settlement.SettlementID,
+                GroupID=group_id,
+                PayerUserID=max_debtor[0],
+                ReceiverUserID=max_creditor[0],
+                Amount=amount,
+                Status='Pending',
+                Date=datetime.utcnow(),
+                DueDate=due_date,
+                PayerName=member_names[max_debtor[0]],
+                ReceiverName=member_names[max_creditor[0]],
+                GroupName=db.query(models.UserGroup.GroupName)
+                    .filter(models.UserGroup.GroupID == group_id)
+                    .scalar()
+            )
+            settlements.append(detailed_settlement)
+
+            # Update balances
             net_balances[max_debtor[0]] += amount
             net_balances[max_creditor[0]] -= amount
-    
-    if not include_all:
-        for expense in expenses:
-            expense.IsSettled = True
-    
+
+    # Mark expenses as settled
+    for expense in expenses:
+        expense.IsSettled = True
+
     db.commit()
     return settlements
+
+@app.post("/settlements/{settlement_id}/process-payment")
+async def process_payment(
+    settlement_id: int,
+    payment_data: schemas.PaymentProcess,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    # Get the settlement
+    settlement = db.query(models.Settlement)\
+        .filter(models.Settlement.SettlementID == settlement_id)\
+        .first()
+    
+    if not settlement:
+        raise HTTPException(status_code=404, detail="Settlement not found")
+    
+    if settlement.PayerUserID != current_user.UserID:
+        raise HTTPException(status_code=403, detail="Only the payer can process this payment")
+    
+    if settlement.Status == "Confirmed":
+        raise HTTPException(status_code=400, detail="Settlement has already been confirmed")
+    
+    # Verify payment amount matches settlement amount
+    if payment_data.amount != settlement.Amount:
+        raise HTTPException(status_code=400, detail="Payment amount must match settlement amount")
+    
+    # Update settlement status
+    settlement.Status = "Confirmed"
+    settlement.PaymentDate = datetime.utcnow()
+    
+    # Create notification for receiver
+    receiver = db.query(models.User)\
+        .filter(models.User.UserID == settlement.ReceiverUserID)\
+        .first()
+        
+    notification = models.Notification(
+        UserID=settlement.ReceiverUserID,
+        Message=f"Payment of ${settlement.Amount:.2f} has been received from {current_user.Name}",
+        Type="PAYMENT_RECEIVED"
+    )
+    db.add(notification)
+    
+    db.commit()
+    return {"message": "Payment processed successfully"}
 
 async def check_settlements(background_tasks: BackgroundTasks):
     while True:
