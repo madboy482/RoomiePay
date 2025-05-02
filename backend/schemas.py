@@ -97,10 +97,13 @@ class DetailedSettlement(BaseModel):
     Status: str
     Date: datetime
     DueDate: datetime
-    PaymentDate: Optional[datetime]
+    PaymentDate: Optional[datetime] = None  # Make PaymentDate optional with default None
     PayerName: str
     ReceiverName: str
     GroupName: str
+
+    class Config:
+        from_attributes = True
 
 class SettlementSummary(BaseModel):
     Period: str
