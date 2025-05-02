@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Dict
+from typing import List, Dict, Optional
 import models, schemas, security
 from database import engine, get_db
 import random
@@ -130,9 +130,12 @@ async def create_expense(
     db.refresh(db_expense)
     return db_expense
 
-@app.get("/groups/{group_id}/expenses", response_model=List[schemas.Expense])
+@app.get("/groups/{group_id}/expenses", response_model=List[schemas.ExpenseResponse])
 async def get_group_expenses(
     group_id: int,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    period: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(security.get_current_user)
 ):
@@ -145,9 +148,29 @@ async def get_group_expenses(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    expenses = db.query(models.Expense)\
-        .filter(models.Expense.GroupID == group_id)\
-        .all()
+    query = db.query(models.Expense).join(
+        models.User,
+        models.User.UserID == models.Expense.PaidByUserID
+    ).filter(models.Expense.GroupID == group_id)
+    
+    if start_date:
+        query = query.filter(models.Expense.Date >= start_date)
+    if end_date:
+        query = query.filter(models.Expense.Date <= end_date)
+    elif period:
+        if period == "day":
+            start_date = datetime.utcnow() - timedelta(days=1)
+        elif period == "week":
+            start_date = datetime.utcnow() - timedelta(weeks=1)
+        elif period == "month":
+            start_date = datetime.utcnow() - timedelta(days=30)
+        elif period == "year":
+            start_date = datetime.utcnow() - timedelta(days=365)
+            
+        if start_date:
+            query = query.filter(models.Expense.Date >= start_date)
+    
+    expenses = query.all()
     return expenses
 
 @app.get("/groups/{group_id}/balances", response_model=schemas.GroupBalance)
@@ -342,6 +365,55 @@ async def confirm_settlement(
     settlement.Status = "Confirmed"
     db.commit()
     return {"message": "Settlement confirmed successfully"}
+
+@app.get("/groups/{group_id}/settlements/summary", response_model=schemas.SettlementSummary)
+async def get_settlements_summary(
+    group_id: int,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    period: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    # Verify user is in group
+    member = db.query(models.GroupMember)\
+        .filter(
+            models.GroupMember.GroupID == group_id,
+            models.GroupMember.UserID == current_user.UserID
+        ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this group")
+    
+    query = db.query(models.Settlement).join(
+        models.User,
+        models.User.UserID == models.Settlement.PayerUserID
+    ).filter(models.Settlement.GroupID == group_id)
+    
+    if start_date:
+        query = query.filter(models.Settlement.Date >= start_date)
+    if end_date:
+        query = query.filter(models.Settlement.Date <= end_date)
+    elif period:
+        if period == "day":
+            start_date = datetime.utcnow() - timedelta(days=1)
+        elif period == "week":
+            start_date = datetime.utcnow() - timedelta(weeks=1)
+        elif period == "month":
+            start_date = datetime.utcnow() - timedelta(days=30)
+        elif period == "year":
+            start_date = datetime.utcnow() - timedelta(days=365)
+            
+        if start_date:
+            query = query.filter(models.Settlement.Date >= start_date)
+    
+    settlements = query.all()
+    total_amount = sum(s.Amount for s in settlements)
+    
+    return schemas.SettlementSummary(
+        Period=period or "custom",
+        TotalAmount=total_amount,
+        Settlements=settlements
+    )
 
 # Invitation endpoints
 @app.post("/invitations", response_model=schemas.Invitation)
