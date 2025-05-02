@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -9,6 +9,7 @@ import random
 import string
 from datetime import datetime, timedelta
 from decimal import Decimal
+import asyncio
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -470,6 +471,162 @@ async def join_group(
     db.add(new_member)
     db.commit()
     return {"message": "Successfully joined the group"}
+
+@app.post("/groups/{group_id}/settlement-period")
+async def set_settlement_period(
+    group_id: int,
+    period: str,  # "1h", "1d", "1w", "1m"
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    # Verify user is admin in group
+    member = db.query(models.GroupMember)\
+        .filter(
+            models.GroupMember.GroupID == group_id,
+            models.GroupMember.UserID == current_user.UserID,
+            models.GroupMember.IsAdmin == True
+        ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Must be group admin to set settlement period")
+    
+    # Calculate next settlement time
+    now = datetime.utcnow()
+    if period.endswith('h'):
+        next_settlement = now + timedelta(hours=int(period[:-1]))
+    elif period.endswith('d'):
+        next_settlement = now + timedelta(days=int(period[:-1]))
+    elif period.endswith('w'):
+        next_settlement = now + timedelta(weeks=int(period[:-1]))
+    elif period.endswith('m'):
+        next_settlement = now + timedelta(days=int(period[:-1]) * 30)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid period format")
+    
+    db_period = db.query(models.SettlementPeriod)\
+        .filter(models.SettlementPeriod.GroupID == group_id)\
+        .first()
+    
+    if db_period:
+        db_period.Period = period
+        db_period.NextSettlement = next_settlement
+    else:
+        db_period = models.SettlementPeriod(
+            GroupID=group_id,
+            Period=period,
+            NextSettlement=next_settlement
+        )
+        db.add(db_period)
+    
+    db.commit()
+    return {"message": f"Settlement period set to {period}"}
+
+@app.get("/notifications", response_model=List[schemas.Notification])
+async def get_notifications(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    notifications = db.query(models.Notification)\
+        .filter(
+            models.Notification.UserID == current_user.UserID,
+            models.Notification.IsRead == False
+        ).all()
+    return notifications
+
+@app.put("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    notification = db.query(models.Notification)\
+        .filter(
+            models.Notification.NotificationID == notification_id,
+            models.Notification.UserID == current_user.UserID
+        ).first()
+    
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    notification.IsRead = True
+    db.commit()
+    return {"message": "Notification marked as read"}
+
+async def check_settlements(background_tasks: BackgroundTasks):
+    while True:
+        try:
+            db = next(get_db())
+            now = datetime.utcnow()
+            
+            # Find groups with due settlements
+            due_periods = db.query(models.SettlementPeriod)\
+                .filter(models.SettlementPeriod.NextSettlement <= now)\
+                .all()
+            
+            for period in due_periods:
+                # Get all unsettled expenses in the group
+                expenses = db.query(models.Expense)\
+                    .filter(
+                        models.Expense.GroupID == period.GroupID,
+                        models.Expense.IsSettled == False
+                    ).all()
+                
+                if expenses:
+                    # Get group members
+                    members = db.query(models.GroupMember)\
+                        .filter(models.GroupMember.GroupID == period.GroupID)\
+                        .all()
+                    
+                    # Calculate total expenses and per-person share
+                    total = sum(expense.Amount for expense in expenses)
+                    share = total / len(members)
+                    
+                    # Create settlements and notifications
+                    for expense in expenses:
+                        for member in members:
+                            if member.UserID != expense.PaidByUserID:
+                                member_share = share
+                                settlement = models.Settlement(
+                                    GroupID=period.GroupID,
+                                    PayerUserID=member.UserID,
+                                    ReceiverUserID=expense.PaidByUserID,
+                                    Amount=member_share,
+                                    DueDate=now + timedelta(days=7)  # Give 1 week to pay
+                                )
+                                db.add(settlement)
+                                
+                                # Create notification for payer
+                                notification = models.Notification(
+                                    UserID=member.UserID,
+                                    Message=f"You owe ${member_share:.2f} for group expenses",
+                                    Type="SETTLEMENT_DUE"
+                                )
+                                db.add(notification)
+                        
+                        expense.IsSettled = True
+                
+                # Update next settlement time
+                if period.Period.endswith('h'):
+                    period.NextSettlement = now + timedelta(hours=int(period.Period[:-1]))
+                elif period.Period.endswith('d'):
+                    period.NextSettlement = now + timedelta(days=int(period.Period[:-1]))
+                elif period.Period.endswith('w'):
+                    period.NextSettlement = now + timedelta(weeks=int(period.Period[:-1]))
+                elif period.Period.endswith('m'):
+                    period.NextSettlement = now + timedelta(days=int(period.Period[:-1]) * 30)
+                
+                period.LastSettlement = now
+            
+            db.commit()
+        except Exception as e:
+            print(f"Error in settlement check: {e}")
+        finally:
+            db.close()
+            
+        await asyncio.sleep(60)  # Check every minute
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(check_settlements(BackgroundTasks()))
 
 if __name__ == "__main__":
     import uvicorn
