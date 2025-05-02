@@ -631,15 +631,13 @@ async def finalize_group_splits(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
 
-    # Get all unsettled expenses
+    # Get ALL expenses for the group, regardless of settlement status
     expenses = db.query(models.Expense)\
-        .filter(
-            models.Expense.GroupID == group_id,
-            models.Expense.IsSettled == False
-        ).all()
+        .filter(models.Expense.GroupID == group_id)\
+        .all()
 
     if not expenses:
-        raise HTTPException(status_code=404, detail="No unsettled expenses found")
+        raise HTTPException(status_code=404, detail="No expenses found in this group")
 
     # Get all members
     members = db.query(models.GroupMember)\
@@ -648,7 +646,7 @@ async def finalize_group_splits(
         .filter(models.GroupMember.GroupID == group_id)\
         .all()
 
-    # Calculate total paid by each person
+    # Calculate total paid by each person for ALL expenses
     total_paid = {}
     for expense in expenses:
         if expense.PaidByUserID not in total_paid:
@@ -664,10 +662,23 @@ async def finalize_group_splits(
     net_balances = {}
     member_names = {member.UserID: name for member, name in members}
 
+    # Initialize net balances for all members
     for member, _ in members:
         net_balances[member.UserID] = total_paid.get(member.UserID, Decimal('0')) - share_per_person
 
-    # Create settlements for non-zero balances
+    # Get existing settlements to subtract from balances
+    existing_settlements = db.query(models.Settlement)\
+        .filter(
+            models.Settlement.GroupID == group_id,
+            models.Settlement.Status == "Confirmed"  # Only consider confirmed settlements
+        ).all()
+
+    # Adjust net balances based on existing confirmed settlements
+    for settlement in existing_settlements:
+        net_balances[settlement.PayerUserID] += settlement.Amount  # Payer has paid this much
+        net_balances[settlement.ReceiverUserID] -= settlement.Amount  # Receiver has received this much
+
+    # Create new settlements for remaining non-zero balances
     while any(abs(bal) > Decimal('0.01') for bal in net_balances.values()):
         # Find biggest debtor and creditor
         max_debtor = max(net_balances.items(), key=lambda x: x[1] if x[1] < 0 else -Decimal('inf'))
@@ -676,7 +687,6 @@ async def finalize_group_splits(
         amount = min(abs(max_debtor[1]), max_creditor[1])
 
         if amount > Decimal('0'):
-            # Set due date to 7 days from now
             due_date = datetime.utcnow() + timedelta(days=7)
             
             # Create settlement
@@ -687,15 +697,15 @@ async def finalize_group_splits(
                 Amount=amount,
                 Status='Pending',
                 DueDate=due_date,
-                PaymentDate=None  # Explicitly set PaymentDate to None for new settlements
+                PaymentDate=None
             )
             db.add(settlement)
-            db.flush()  # Flush to get the SettlementID
-            
+            db.flush()
+
             # Create notification for the payer
             notification = models.Notification(
                 UserID=max_debtor[0],
-                Message=f"You owe ${amount:.2f} to {member_names[max_creditor[0]]}. Due by {due_date.strftime('%Y-%m-%d')}",
+                Message=f"You owe ${amount:.2f} to {member_names[max_creditor[0]]} based on total group expenses. Due by {due_date.strftime('%Y-%m-%d')}",
                 Type="SETTLEMENT_DUE"
             )
             db.add(notification)
@@ -707,7 +717,7 @@ async def finalize_group_splits(
 
             # Create a DetailedSettlement object for the response
             detailed_settlement = schemas.DetailedSettlement(
-                SettlementID=settlement.SettlementID,  # Now we have the actual SettlementID
+                SettlementID=settlement.SettlementID,
                 GroupID=group_id,
                 PayerUserID=max_debtor[0],
                 ReceiverUserID=max_creditor[0],
@@ -715,7 +725,7 @@ async def finalize_group_splits(
                 Status='Pending',
                 Date=datetime.utcnow(),
                 DueDate=due_date,
-                PaymentDate=None,  # Explicitly include PaymentDate
+                PaymentDate=None,
                 PayerName=member_names[max_debtor[0]],
                 ReceiverName=member_names[max_creditor[0]],
                 GroupName=group_name
@@ -725,10 +735,6 @@ async def finalize_group_splits(
             # Update balances
             net_balances[max_debtor[0]] += amount
             net_balances[max_creditor[0]] -= amount
-
-    # Mark expenses as settled
-    for expense in expenses:
-        expense.IsSettled = True
 
     db.commit()
     return settlements
