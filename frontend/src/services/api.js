@@ -35,6 +35,9 @@ export const addExpense = (expenseData) =>
 export const getGroupExpenses = (groupId) => 
     api.get(`/groups/${groupId}/expenses`);
 
+export const getSettlementSummary = (url) =>
+    api.get(url);
+
 export const getGroupBalances = (groupId) => 
     api.get(`/groups/${groupId}/balances`);
 
