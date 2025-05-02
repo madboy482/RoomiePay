@@ -30,7 +30,6 @@ CREATE TABLE GroupMembers (
     UserID INT NOT NULL,
     GroupID INT NOT NULL,
     IsAdmin BOOLEAN NOT NULL DEFAULT FALSE,
-    JoinDate DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (UserID, GroupID),
     FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
     FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE
@@ -64,6 +63,9 @@ CREATE TABLE Settlements (
     FOREIGN KEY (ReceiverUserID) REFERENCES Users(UserID) ON DELETE CASCADE
 );
 
+-- Add DueDate column to Settlements table
+ALTER TABLE Settlements ADD COLUMN DueDate DATETIME;
+
 -- Create Invitations table
 CREATE TABLE Invitations (
     InvitationID INT AUTO_INCREMENT PRIMARY KEY,
@@ -75,6 +77,26 @@ CREATE TABLE Invitations (
     ExpiryDate DATETIME,
     FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE,
     FOREIGN KEY (SenderUserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Create Notifications table
+CREATE TABLE IF NOT EXISTS Notifications (
+    NotificationID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT NOT NULL,
+    Message TEXT NOT NULL,
+    Type VARCHAR(50) NOT NULL,
+    IsRead BOOLEAN DEFAULT FALSE,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Create SettlementPeriods table
+CREATE TABLE IF NOT EXISTS SettlementPeriods (
+    GroupID INT PRIMARY KEY,
+    Period VARCHAR(10) NOT NULL,
+    LastSettlement DATETIME,
+    NextSettlement DATETIME,
+    FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE
 );
 
 -- Insert sample Users
@@ -113,28 +135,6 @@ INSERT INTO UserGroups (GroupID, GroupName, Description, InviteCode, CreatedByUs
 (14, 'Flat Deposit Return', 'Security deposit calculation', 'FLATSEC', 14),
 (15, 'Festival Celebrations', 'Decorations, sweets etc.', 'FEST2025', 15);
 
--- Insert sample GroupMembers
-INSERT INTO GroupMembers (UserID, GroupID, IsAdmin) VALUES
-(1, 1, TRUE), (2, 1, FALSE), (3, 1, FALSE),
-(2, 2, TRUE), (4, 2, FALSE), (5, 2, FALSE),
-(3, 3, TRUE), (6, 3, FALSE), (7, 3, FALSE),
-(4, 4, TRUE), (8, 4, FALSE), (9, 4, FALSE),
-(6, 5, TRUE), (10, 5, FALSE), (11, 5, FALSE),
-(7, 6, TRUE), (1, 6, FALSE), (5, 6, FALSE),
-(5, 7, TRUE), (3, 7, FALSE), (11, 7, FALSE),
-(8, 8, TRUE), (9, 8, FALSE), (10, 8, FALSE),
-(9, 9, TRUE), (12, 9, FALSE), (13, 9, FALSE),
-(10, 10, TRUE), (14, 10, FALSE), (15, 10, FALSE);
-
--- Insert sample Expenses
-INSERT INTO Expenses (ExpenseID, GroupID, PaidByUserID, Amount, Description, Date, IsSettled) VALUES
-(1, 1, 1, 1200.00, 'Electricity bill', '2025-02-01', FALSE),
-(2, 1, 2, 900.00, 'Groceries', '2025-02-02', FALSE),
-(3, 2, 2, 5400.00, 'Hotel booking', '2025-02-05', TRUE),
-(4, 2, 5, 1800.00, 'Cab from airport', '2025-02-06', FALSE),
-(5, 3, 3, 3200.00, 'Domain & hosting', '2025-02-04', TRUE),
-(6, 4, 4, 1500.00, 'Room cleaning supplies', '2025-02-03', FALSE),
-(7, 5, 6, 400.00, 'Snacks', '2025-02-02', FALSE),
 (8, 6, 7, 8000.00, 'Bus booking', '2025-01-31', TRUE),
 (9, 7, 5, 650.00, 'Milk & Bread', '2025-02-03', FALSE),
 (10, 8, 8, 1100.00, 'Pizza Party', '2025-02-01', TRUE),
