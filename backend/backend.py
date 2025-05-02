@@ -131,7 +131,7 @@ async def create_expense(
     db.refresh(db_expense)
     return db_expense
 
-@app.get("/groups/{group_id}/expenses", response_model=List[schemas.ExpenseResponse])
+@app.get("/groups/{group_id}/expenses")
 async def get_group_expenses(
     group_id: int,
     start_date: Optional[datetime] = None,
@@ -149,10 +149,13 @@ async def get_group_expenses(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    query = db.query(models.Expense).join(
-        models.User,
-        models.User.UserID == models.Expense.PaidByUserID
-    ).filter(models.Expense.GroupID == group_id)
+    query = db.query(models.Expense)\
+        .outerjoin(
+            models.User,
+            models.User.UserID == models.Expense.PaidByUserID
+        )\
+        .filter(models.Expense.GroupID == group_id)\
+        .order_by(models.Expense.Date.desc())
     
     if start_date:
         query = query.filter(models.Expense.Date >= start_date)
@@ -172,6 +175,13 @@ async def get_group_expenses(
             query = query.filter(models.Expense.Date >= start_date)
     
     expenses = query.all()
+    
+    # Add user details to each expense
+    for expense in expenses:
+        expense.PaidByUser = db.query(models.User)\
+            .filter(models.User.UserID == expense.PaidByUserID)\
+            .first()
+    
     return expenses
 
 @app.get("/groups/{group_id}/balances", response_model=schemas.GroupBalance)
@@ -571,40 +581,53 @@ async def check_settlements(background_tasks: BackgroundTasks):
                     ).all()
                 
                 if expenses:
+                    # Calculate total expenses and shares
+                    total_paid = {}  # who paid how much
+                    for expense in expenses:
+                        total_paid[expense.PaidByUserID] = total_paid.get(expense.PaidByUserID, 0) + expense.Amount
+                    
                     # Get group members
                     members = db.query(models.GroupMember)\
                         .filter(models.GroupMember.GroupID == period.GroupID)\
                         .all()
                     
-                    # Calculate total expenses and per-person share
-                    total = sum(expense.Amount for expense in expenses)
-                    share = total / len(members)
+                    # Calculate equal share per person
+                    total_amount = sum(total_paid.values())
+                    share_per_person = total_amount / len(members)
                     
                     # Create settlements and notifications
-                    for expense in expenses:
-                        for member in members:
-                            if member.UserID != expense.PaidByUserID:
-                                member_share = share
-                                settlement = models.Settlement(
-                                    GroupID=period.GroupID,
-                                    PayerUserID=member.UserID,
-                                    ReceiverUserID=expense.PaidByUserID,
-                                    Amount=member_share,
-                                    DueDate=now + timedelta(days=7)  # Give 1 week to pay
-                                )
-                                db.add(settlement)
-                                
-                                # Create notification for payer
-                                notification = models.Notification(
-                                    UserID=member.UserID,
-                                    Message=f"You owe ${member_share:.2f} for group expenses",
-                                    Type="SETTLEMENT_DUE"
-                                )
-                                db.add(notification)
+                    for member in members:
+                        amount_paid = total_paid.get(member.UserID, 0)
+                        amount_owed = share_per_person - amount_paid
                         
+                        if amount_owed > 0:  # This person needs to pay
+                            # Find who to pay to (person who paid the most)
+                            max_payer = max(total_paid.items(), key=lambda x: x[1])[0]
+                            
+                            # Create settlement
+                            settlement = models.Settlement(
+                                GroupID=period.GroupID,
+                                PayerUserID=member.UserID,
+                                ReceiverUserID=max_payer,
+                                Amount=amount_owed,
+                                Status='Pending',
+                                DueDate=now + timedelta(days=7)  # 1 week to pay
+                            )
+                            db.add(settlement)
+                            
+                            # Create notification for the payer
+                            notification = models.Notification(
+                                UserID=member.UserID,
+                                Message=f'You need to pay ${amount_owed:.2f} for group expenses',
+                                Type='SETTLEMENT_DUE'
+                            )
+                            db.add(notification)
+                    
+                    # Mark expenses as settled
+                    for expense in expenses:
                         expense.IsSettled = True
                 
-                # Update next settlement time
+                # Update next settlement time based on period
                 if period.Period.endswith('h'):
                     period.NextSettlement = now + timedelta(hours=int(period.Period[:-1]))
                 elif period.Period.endswith('d'):
@@ -621,7 +644,7 @@ async def check_settlements(background_tasks: BackgroundTasks):
             print(f"Error in settlement check: {e}")
         finally:
             db.close()
-            
+        
         await asyncio.sleep(60)  # Check every minute
 
 @app.on_event("startup")
