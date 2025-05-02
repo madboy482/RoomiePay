@@ -75,6 +75,7 @@ class SettlementBase(BaseModel):
     ReceiverUserID: int
     Amount: Decimal
     PaymentMethod: Optional[str] = None
+    DueDate: Optional[datetime] = None
 
 class SettlementCreate(SettlementBase):
     pass
@@ -138,3 +139,22 @@ class GroupBalance(BaseModel):
 class SplitExpense(ExpenseCreate):
     SplitType: str = "EQUAL"  # EQUAL or PERCENTAGE
     Splits: Optional[Dict[int, float]] = None  # UserID to percentage/amount mapping
+
+class NotificationBase(BaseModel):
+    UserID: int
+    Message: str
+    Type: str  # "SETTLEMENT_DUE", "PAYMENT_RECEIVED", etc.
+    IsRead: bool = False
+
+class Notification(NotificationBase):
+    NotificationID: int
+    CreatedAt: datetime
+    
+    class Config:
+        from_attributes = True
+
+class SettlementPeriod(BaseModel):
+    GroupID: int
+    Period: str  # "1h", "1d", "1w", "1m" for hour, day, week, month
+    LastSettlement: Optional[datetime] = None
+    NextSettlement: Optional[datetime] = None
