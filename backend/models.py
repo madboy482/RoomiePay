@@ -52,6 +52,7 @@ class Settlement(Base):
     Status = Column(Enum("Pending", "Confirmed", "Overdue", name="settlement_status"), default="Pending")
     PaymentMethod = Column(String(50))
     DueDate = Column(DateTime, nullable=True)
+    PaymentDate = Column(DateTime, nullable=True)
 
 class Invitation(Base):
     __tablename__ = "Invitations"

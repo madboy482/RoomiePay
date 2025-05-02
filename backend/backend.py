@@ -619,10 +619,10 @@ async def mark_notification_read(
 @app.post("/groups/{group_id}/finalize-splits", response_model=List[schemas.Settlement])
 async def finalize_group_splits(
     group_id: int,
+    include_all: bool = True,  # Show all expenses by default
     db: Session = Depends(get_db),
     current_user: models.User = Depends(security.get_current_user)
 ):
-    # Verify user is in group
     member = db.query(models.GroupMember)\
         .filter(
             models.GroupMember.GroupID == group_id,
@@ -631,45 +631,52 @@ async def finalize_group_splits(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    # Get all unsettled expenses
-    expenses = db.query(models.Expense)\
-        .filter(
-            models.Expense.GroupID == group_id,
-            models.Expense.IsSettled == False
-        ).all()
+    # Get all expenses based on include_all parameter
+    expenses_query = db.query(models.Expense)\
+        .filter(models.Expense.GroupID == group_id)
+    
+    if not include_all:
+        expenses_query = expenses_query.filter(models.Expense.IsSettled == False)
+    
+    expenses = expenses_query.all()
     
     if not expenses:
-        raise HTTPException(status_code=400, detail="No unsettled expenses to finalize")
+        # Return existing settlements instead of error
+        settlements = db.query(models.Settlement)\
+            .filter(models.Settlement.GroupID == group_id)\
+            .order_by(models.Settlement.Date.desc())\
+            .all()
+        return settlements
     
-    # Get all members
+    # Calculate settlements from expenses
     members = db.query(models.GroupMember)\
         .filter(models.GroupMember.GroupID == group_id)\
         .all()
     
-    # Calculate total paid by each person
     total_paid = {}
     for expense in expenses:
-        total_paid[expense.PaidByUserID] = total_paid.get(expense.PaidByUserID, Decimal('0')) + Decimal(str(expense.Amount))
+        if expense.PaidByUserID not in total_paid:
+            total_paid[expense.PaidByUserID] = Decimal('0')
+        total_paid[expense.PaidByUserID] += expense.Amount
     
-    # Calculate equal share per person
     total_amount = sum(total_paid.values())
     share_per_person = total_amount / Decimal(str(len(members)))
     
-    # Calculate net balances
+    # Calculate who owes what
     settlements = []
-    net_balances = {m.UserID: total_paid.get(m.UserID, Decimal('0')) - share_per_person for m in members}
+    net_balances = {}
+    for member in members:
+        net_balances[member.UserID] = total_paid.get(member.UserID, Decimal('0')) - share_per_person
     
-    # While there are unresolved balances
+    # Create settlements for non-zero balances
     while any(abs(bal) > Decimal('0.01') for bal in net_balances.values()):
-        # Find max creditor and debtor
+        # Find biggest debtor and creditor
         max_debtor = max(net_balances.items(), key=lambda x: x[1] if x[1] < 0 else -Decimal('inf'))
         max_creditor = max(net_balances.items(), key=lambda x: x[1] if x[1] > 0 else -Decimal('inf'))
         
-        # Calculate settlement amount
         amount = min(abs(max_debtor[1]), max_creditor[1])
         
         if amount > Decimal('0'):
-            # Create settlement
             settlement = models.Settlement(
                 GroupID=group_id,
                 PayerUserID=max_debtor[0],
@@ -681,13 +688,12 @@ async def finalize_group_splits(
             db.add(settlement)
             settlements.append(settlement)
             
-            # Update balances
             net_balances[max_debtor[0]] += amount
             net_balances[max_creditor[0]] -= amount
     
-    # Mark all expenses as settled
-    for expense in expenses:
-        expense.IsSettled = True
+    if not include_all:
+        for expense in expenses:
+            expense.IsSettled = True
     
     db.commit()
     return settlements

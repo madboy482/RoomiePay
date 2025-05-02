@@ -88,14 +88,19 @@ class Settlement(SettlementBase):
     class Config:
         from_attributes = True
 
-class DetailedSettlement(Settlement):
-    Payer: User
-    Receiver: User
+class DetailedSettlement(BaseModel):
+    SettlementID: int
+    GroupID: int
+    PayerUserID: int
+    ReceiverUserID: int
+    Amount: Decimal
+    Status: str
+    Date: datetime
+    DueDate: datetime
+    PaymentDate: Optional[datetime]
     PayerName: str
     ReceiverName: str
-    
-    class Config:
-        from_attributes = True
+    GroupName: str
 
 class SettlementSummary(BaseModel):
     Period: str
@@ -160,3 +165,6 @@ class SettlementPeriod(BaseModel):
     Period: str  # "1h", "1d", "1w", "1m" for hour, day, week, month
     LastSettlement: Optional[datetime] = None
     NextSettlement: Optional[datetime] = None
+
+class PaymentProcess(BaseModel):
+    amount: Decimal
