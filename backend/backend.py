@@ -229,11 +229,13 @@ async def get_group_balances(
         models.Expense.IsSettled == False
     ).group_by(models.Expense.PaidByUserID).all()
     
-    total_expenses = sum(amount for _, amount in paid_amounts)
-    share_per_person = total_expenses / len(members) if members else Decimal("0")
+    # Convert all amounts to Decimal for consistency
+    total_expenses = sum((Decimal(str(amount)) for _, amount in paid_amounts), Decimal('0'))
+    share_per_person = total_expenses / Decimal(str(len(members))) if members else Decimal('0')
     
     # Update balances based on payments made
     for user_id, amount_paid in paid_amounts:
+        amount_paid = Decimal(str(amount_paid))
         member_balances[user_id]["IsOwedAmount"] = amount_paid
         member_balances[user_id]["NetBalance"] = amount_paid - share_per_person
     
