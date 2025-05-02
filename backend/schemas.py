@@ -55,6 +55,20 @@ class Expense(ExpenseBase):
     class Config:
         from_attributes = True
 
+class ExpenseResponse(ExpenseBase):
+    ExpenseID: int
+    Date: datetime
+    IsSettled: bool
+    PaidByUser: User
+    
+    class Config:
+        from_attributes = True
+
+class TimeFilterParams(BaseModel):
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    period: Optional[str] = None  # "day", "week", "month", "year"
+
 class SettlementBase(BaseModel):
     GroupID: int
     PayerUserID: int
@@ -72,6 +86,18 @@ class Settlement(SettlementBase):
 
     class Config:
         from_attributes = True
+
+class DetailedSettlement(Settlement):
+    Payer: User
+    Receiver: User
+    
+    class Config:
+        from_attributes = True
+
+class SettlementSummary(BaseModel):
+    Period: str
+    TotalAmount: Decimal
+    Settlements: List[Settlement]
 
 class InvitationBase(BaseModel):
     GroupID: int
