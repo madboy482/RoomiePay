@@ -46,3 +46,12 @@ export const createSettlement = (settlementData) =>
 
 export const confirmSettlement = (settlementId) => 
     api.put(`/settlements/${settlementId}/confirm`);
+
+export const setSettlementPeriod = (groupId, period) =>
+    api.post(`/groups/${groupId}/settlement-period`, { period });
+
+export const getNotifications = () =>
+    api.get('/notifications');
+
+export const markNotificationRead = (notificationId) =>
+    api.put(`/notifications/${notificationId}/read`);
