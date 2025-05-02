@@ -14,6 +14,20 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Add response interceptor to handle token expiration
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            // Clear invalid token
+            localStorage.removeItem('token');
+            // Redirect to login page
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const login = (email, password) => 
     api.post('/token', { Email: email, Password: password });
 
