@@ -32,8 +32,13 @@ export const getGroups = () =>
 export const addExpense = (expenseData) => 
     api.post('/expenses/split', expenseData);
 
-export const getGroupExpenses = (groupId) => 
-    api.get(`/groups/${groupId}/expenses`);
+export const getGroupExpenses = (groupId, period = null) => {
+    let url = `/groups/${groupId}/expenses`;
+    if (period) {
+        url += `?period=${period}`;
+    }
+    return api.get(url);
+};
 
 export const getSettlementSummary = (url) =>
     api.get(url);
@@ -58,3 +63,6 @@ export const markNotificationRead = (notificationId) =>
 
 export const getUnpaidSettlements = (userId) =>
     api.get(`/users/${userId}/pending_settlements`);
+
+export const finalizeGroupSplits = (groupId) =>
+    api.post(`/groups/${groupId}/finalize-splits`);
