@@ -18,7 +18,8 @@ const Group = () => {
     const [expenseForm, setExpenseForm] = useState({
         Amount: '',
         Description: '',
-        SplitType: 'EQUAL'
+        SplitType: 'EQUAL',
+        PaidByUserID: JSON.parse(localStorage.getItem('user'))?.UserID
     });
 
     useEffect(() => {
@@ -40,15 +41,21 @@ const Group = () => {
 
     const handleAddExpense = async (e) => {
         e.preventDefault();
+        const expenseData = {
+            GroupID: parseInt(groupId),
+            Amount: parseFloat(expenseForm.Amount),
+            Description: expenseForm.Description,
+            PaidByUserID: JSON.parse(localStorage.getItem('user'))?.UserID,
+            SplitType: 'EQUAL',
+            Splits: null  // Required by the schema but not used for equal splits
+        };
+        console.log('Sending expense data:', expenseData);
         try {
-            await addExpense({
-                ...expenseForm,
-                GroupID: parseInt(groupId),
-                Amount: parseFloat(expenseForm.Amount)
-            });
+            await addExpense(expenseData);
             setOpenAddExpense(false);
             loadGroupData();
         } catch (error) {
+            console.error('Failed to add expense:', error.response?.data || error);
             alert('Failed to add expense');
         }
     };
