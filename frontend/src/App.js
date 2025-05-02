@@ -1,11 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, AppBar, Toolbar, Typography } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button } from '@mui/material';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import Group from './components/Group';
 import Notifications from './components/Notifications';
+import Settlements from './components/Settlements';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -25,6 +26,8 @@ const PrivateLayout = ({ children }) => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             RoomiePay
           </Typography>
+          <Button color="inherit" href="/dashboard">Dashboard</Button>
+          <Button color="inherit" href="/settlements">Settlements</Button>
           <Notifications />
         </Toolbar>
       </AppBar>
@@ -52,6 +55,14 @@ function App() {
           element={
             <PrivateLayout>
               <Group />
+            </PrivateLayout>
+          } 
+        />
+        <Route 
+          path="/settlements" 
+          element={
+            <PrivateLayout>
+              <Settlements />
             </PrivateLayout>
           } 
         />
