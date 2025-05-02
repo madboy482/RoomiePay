@@ -10,6 +10,7 @@ import string
 from datetime import datetime, timedelta
 from decimal import Decimal
 import asyncio
+from security import ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -27,6 +28,28 @@ app.add_middleware(
 
 def generate_invite_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+# Add validation for period format
+def validate_period_format(period: str) -> bool:
+    if not period:
+        return False
+    if len(period) < 2:
+        return False
+    
+    # Get the number and unit parts
+    number = period[:-1]
+    unit = period[-1]
+    
+    # Check if number is valid
+    try:
+        num = int(number)
+        if num <= 0:
+            return False
+    except ValueError:
+        return False
+    
+    # Check if unit is valid
+    return unit in ['h', 'd', 'w', 'm']
 
 # Authentication endpoints
 @app.post("/register", response_model=schemas.User)
@@ -58,7 +81,8 @@ async def login(user_data: schemas.UserLogin, db: Session = Depends(get_db)):
         )
     
     access_token = security.create_access_token(
-        data={"sub": user.Email}
+        data={"sub": user.Email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {
         "access_token": access_token, 
@@ -125,7 +149,14 @@ async def create_expense(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    db_expense = models.Expense(**expense.model_dump())
+    # Create the expense with IsSettled explicitly set to False
+    db_expense = models.Expense(
+        GroupID=expense.GroupID,
+        PaidByUserID=expense.PaidByUserID,
+        Amount=expense.Amount,
+        Description=expense.Description,
+        IsSettled=False
+    )
     db.add(db_expense)
     db.commit()
     db.refresh(db_expense)
@@ -320,7 +351,7 @@ async def create_split_expense(
     db.commit()
     return db_expense
 
-@app.get("/users/{user_id}/pending_settlements", response_model=List[schemas.Settlement])
+@app.get("/users/{user_id}/pending_settlements", response_model=List[schemas.DetailedSettlement])
 async def get_pending_settlements(
     user_id: int,
     db: Session = Depends(get_db),
@@ -330,13 +361,28 @@ async def get_pending_settlements(
         raise HTTPException(status_code=403, detail="Can only view your own settlements")
     
     settlements = db.query(models.Settlement)\
+        .join(models.User, models.User.UserID == models.Settlement.PayerUserID)\
+        .add_columns(models.User.Name.label('PayerName'))\
+        .join(models.User, models.User.UserID == models.Settlement.ReceiverUserID, isouter=True)\
+        .add_columns(models.User.Name.label('ReceiverName'))\
         .filter(
             (models.Settlement.PayerUserID == user_id) | 
             (models.Settlement.ReceiverUserID == user_id),
             models.Settlement.Status == "Pending"
         ).all()
     
-    return settlements
+    # Convert to DetailedSettlement objects
+    detailed_settlements = []
+    for settlement_tuple in settlements:
+        settlement, payer_name, receiver_name = settlement_tuple
+        detailed = schemas.DetailedSettlement(
+            **{k: v for k, v in settlement.__dict__.items() if not k.startswith('_')},
+            PayerName=payer_name,
+            ReceiverName=receiver_name
+        )
+        detailed_settlements.append(detailed)
+    
+    return detailed_settlements
 
 # Settlement endpoints
 @app.post("/settlements", response_model=schemas.Settlement)
@@ -501,36 +547,43 @@ async def set_settlement_period(
     if not member:
         raise HTTPException(status_code=403, detail="Must be group admin to set settlement period")
     
-    # Calculate next settlement time
-    now = datetime.utcnow()
-    if period.endswith('h'):
-        next_settlement = now + timedelta(hours=int(period[:-1]))
-    elif period.endswith('d'):
-        next_settlement = now + timedelta(days=int(period[:-1]))
-    elif period.endswith('w'):
-        next_settlement = now + timedelta(weeks=int(period[:-1]))
-    elif period.endswith('m'):
-        next_settlement = now + timedelta(days=int(period[:-1]) * 30)
-    else:
-        raise HTTPException(status_code=400, detail="Invalid period format")
+    # Validate period format
+    if not validate_period_format(period):
+        raise HTTPException(status_code=400, detail="Invalid period format. Use format like '1h', '1d', '1w', '1m'")
     
-    db_period = db.query(models.SettlementPeriod)\
-        .filter(models.SettlementPeriod.GroupID == group_id)\
-        .first()
+    try:
+        # Calculate next settlement time
+        now = datetime.utcnow()
+        if period.endswith('h'):
+            next_settlement = now + timedelta(hours=int(period[:-1]))
+        elif period.endswith('d'):
+            next_settlement = now + timedelta(days=int(period[:-1]))
+        elif period.endswith('w'):
+            next_settlement = now + timedelta(weeks=int(period[:-1]))
+        elif period.endswith('m'):
+            next_settlement = now + timedelta(days=int(period[:-1]) * 30)
+        
+        db_period = db.query(models.SettlementPeriod)\
+            .filter(models.SettlementPeriod.GroupID == group_id)\
+            .first()
+        
+        if db_period:
+            db_period.Period = period
+            db_period.NextSettlement = next_settlement
+        else:
+            db_period = models.SettlementPeriod(
+                GroupID=group_id,
+                Period=period,
+                NextSettlement=next_settlement
+            )
+            db.add(db_period)
+        
+        db.commit()
+        return {"message": f"Settlement period set to {period}", "next_settlement": next_settlement}
     
-    if db_period:
-        db_period.Period = period
-        db_period.NextSettlement = next_settlement
-    else:
-        db_period = models.SettlementPeriod(
-            GroupID=group_id,
-            Period=period,
-            NextSettlement=next_settlement
-        )
-        db.add(db_period)
-    
-    db.commit()
-    return {"message": f"Settlement period set to {period}"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update settlement period: {str(e)}")
 
 @app.get("/notifications", response_model=List[schemas.Notification])
 async def get_notifications(
