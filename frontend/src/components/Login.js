@@ -13,6 +13,7 @@ const Login = () => {
         try {
             const response = await login(email, password);
             localStorage.setItem('token', response.data.access_token);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
             navigate('/dashboard');
         } catch (error) {
             alert('Login failed. Please check your credentials.');
