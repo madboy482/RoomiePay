@@ -569,15 +569,14 @@ async def finalize_group_splits(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(security.get_current_user)
 ):
-    # Verify user is admin in group
+    # Verify user is in group
     member = db.query(models.GroupMember)\
         .filter(
             models.GroupMember.GroupID == group_id,
-            models.GroupMember.UserID == current_user.UserID,
-            models.GroupMember.IsAdmin == True
+            models.GroupMember.UserID == current_user.UserID
         ).first()
     if not member:
-        raise HTTPException(status_code=403, detail="Must be group admin to finalize splits")
+        raise HTTPException(status_code=403, detail="Not a member of this group")
     
     # Get all unsettled expenses
     expenses = db.query(models.Expense)\
