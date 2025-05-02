@@ -13,6 +13,7 @@ import {
     finalizeGroupSplits
 } from '../services/api';
 import SettlementConfig from './SettlementConfig';
+import PaymentPortal from './PaymentPortal';
 
 const Group = () => {
     const { groupId } = useParams();
@@ -32,6 +33,8 @@ const Group = () => {
     const [showSettlementConfig, setShowSettlementConfig] = useState(false);
     const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
     const [finalizedSettlements, setFinalizedSettlements] = useState(null);
+    const [selectedSettlement, setSelectedSettlement] = useState(null);
+    const [showPaymentPortal, setShowPaymentPortal] = useState(false);
 
     useEffect(() => {
         loadGroupData();
@@ -108,6 +111,16 @@ const Group = () => {
             console.error('Failed to finalize splits:', error);
             alert(error.response?.data?.detail || 'Failed to finalize splits');
         }
+    };
+
+    const handlePayNow = (settlement) => {
+        setSelectedSettlement(settlement);
+        setShowPaymentPortal(true);
+    };
+
+    const handlePaymentComplete = () => {
+        setShowPaymentPortal(false);
+        loadGroupData(); // Refresh the data after payment
     };
 
     return (
@@ -300,15 +313,25 @@ const Group = () => {
                                 <ListItem key={index}>
                                     <ListItemText
                                         primary={
-                                            <Typography>
-                                                Payment Required: ${Number(settlement.Amount).toFixed(2)}
-                                            </Typography>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography>
+                                                    Payment Required: ${Number(settlement.Amount).toFixed(2)}
+                                                </Typography>
+                                                <Button 
+                                                    variant="contained" 
+                                                    color="primary"
+                                                    onClick={() => handlePayNow(settlement)}
+                                                    size="small"
+                                                >
+                                                    Pay Now
+                                                </Button>
+                                            </Box>
                                         }
                                         secondary={
                                             <>
-                                                From: User {settlement.PayerUserID}
+                                                From: {settlement.PayerName}
                                                 <br />
-                                                To: User {settlement.ReceiverUserID}
+                                                To: {settlement.ReceiverName}
                                                 <br />
                                                 Due by: {new Date(settlement.DueDate).toLocaleDateString()}
                                             </>
@@ -325,6 +348,14 @@ const Group = () => {
                     <Button onClick={() => setShowFinalizeDialog(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Payment Portal */}
+            <PaymentPortal
+                open={showPaymentPortal}
+                onClose={() => setShowPaymentPortal(false)}
+                settlement={selectedSettlement}
+                onPaymentComplete={handlePaymentComplete}
+            />
         </Box>
     );
 };

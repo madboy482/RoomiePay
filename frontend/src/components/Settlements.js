@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
 import { getSettlementHistory, processPayment, getGroupSettlements } from '../services/api';
+import PaymentPortal from './PaymentPortal';
 
 const Settlements = ({ groupId }) => {
     const [settlements, setSettlements] = useState([]);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [showPaymentPortal, setShowPaymentPortal] = useState(false);
     const [selectedSettlement, setSelectedSettlement] = useState(null);
-    const [paymentAmount, setPaymentAmount] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
     const [showFinalizedModal, setShowFinalizedModal] = useState(false);
@@ -31,9 +31,7 @@ const Settlements = ({ groupId }) => {
 
     const handlePayment = (settlement) => {
         setSelectedSettlement(settlement);
-        setPaymentAmount(settlement.Amount.toString());
-        setError('');
-        setShowPaymentModal(true);
+        setShowPaymentPortal(true);
     };
 
     const handleFinalizeSplits = async () => {
@@ -46,19 +44,9 @@ const Settlements = ({ groupId }) => {
         }
     };
 
-    const handleProcessPayment = async () => {
-        try {
-            if (!paymentAmount || parseFloat(paymentAmount) !== selectedSettlement.Amount) {
-                setError('Payment amount must match the required amount');
-                return;
-            }
-
-            await processPayment(selectedSettlement.SettlementID, parseFloat(paymentAmount));
-            setShowPaymentModal(false);
-            loadSettlements();
-        } catch (err) {
-            setError(err.response?.data?.detail || 'Error processing payment');
-        }
+    const handlePaymentComplete = () => {
+        setShowPaymentPortal(false);
+        loadSettlements(); // Refresh the settlements list
     };
 
     const formatDate = (dateStr) => {
@@ -80,7 +68,7 @@ const Settlements = ({ groupId }) => {
                 )}
             </div>
 
-            {error && !showPaymentModal && (
+            {error && !showPaymentPortal && (
                 <Alert variant="danger" onClose={() => setError('')} dismissible>
                     {error}
                 </Alert>
@@ -148,68 +136,6 @@ const Settlements = ({ groupId }) => {
                 </Card.Body>
             </Card>
 
-            {/* Payment Modal */}
-            <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)}>
-                <Modal.Header closeButton>
-                    <Modal.Title>Process Payment</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    {selectedSettlement && (
-                        <div>
-                            <div className="payment-details p-3 mb-4 border rounded bg-light">
-                                <h5 className="mb-3">Payment Details</h5>
-                                <p className="mb-2">
-                                    <strong>Payment Required: </strong>
-                                    <span className="text-primary">${selectedSettlement.Amount.toFixed(2)}</span>
-                                </p>
-                                <p className="mb-2">
-                                    <strong>From: </strong>{selectedSettlement.PayerName}
-                                </p>
-                                <p className="mb-2">
-                                    <strong>To: </strong>{selectedSettlement.ReceiverName}
-                                </p>
-                                <p className="mb-2">
-                                    <strong>Due by: </strong>{formatDate(selectedSettlement.DueDate)}
-                                </p>
-                                <p className="mb-0">
-                                    <strong>Group: </strong>{selectedSettlement.GroupName}
-                                </p>
-                            </div>
-                            
-                            <Form>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Enter Payment Amount</Form.Label>
-                                    <Form.Control
-                                        type="number"
-                                        step="0.01"
-                                        value={paymentAmount}
-                                        onChange={(e) => setPaymentAmount(e.target.value)}
-                                        isInvalid={!!error}
-                                    />
-                                    <Form.Text className="text-muted">
-                                        Amount must match the required payment exactly
-                                    </Form.Text>
-                                </Form.Group>
-                            </Form>
-                            
-                            {error && (
-                                <Alert variant="danger" className="mt-3">
-                                    {error}
-                                </Alert>
-                            )}
-                        </div>
-                    )}
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
-                        Cancel
-                    </Button>
-                    <Button variant="primary" onClick={handleProcessPayment}>
-                        Confirm Payment
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
             {/* Finalized Settlements Modal */}
             <Modal 
                 show={showFinalizedModal} 
@@ -268,6 +194,14 @@ const Settlements = ({ groupId }) => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* Payment Portal */}
+            <PaymentPortal
+                open={showPaymentPortal}
+                onClose={() => setShowPaymentPortal(false)}
+                settlement={selectedSettlement}
+                onPaymentComplete={handlePaymentComplete}
+            />
         </div>
     );
 };
