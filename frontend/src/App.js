@@ -1,14 +1,36 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Box, AppBar, Toolbar, Typography } from '@mui/material';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import Group from './components/Group';
+import Notifications from './components/Notifications';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/login" />;
+};
+
+const PrivateLayout = ({ children }) => {
+  const token = localStorage.getItem('token');
+  
+  if (!token) return <Navigate to="/login" />;
+  
+  return (
+    <Box>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            RoomiePay
+          </Typography>
+          <Notifications />
+        </Toolbar>
+      </AppBar>
+      {children}
+    </Box>
+  );
 };
 
 function App() {
@@ -20,17 +42,17 @@ function App() {
         <Route 
           path="/dashboard" 
           element={
-            <PrivateRoute>
+            <PrivateLayout>
               <Dashboard />
-            </PrivateRoute>
+            </PrivateLayout>
           } 
         />
         <Route 
           path="/group/:groupId" 
           element={
-            <PrivateRoute>
+            <PrivateLayout>
               <Group />
-            </PrivateRoute>
+            </PrivateLayout>
           } 
         />
         <Route path="/" element={<Navigate to="/login" />} />
