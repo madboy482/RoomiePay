@@ -44,8 +44,8 @@ export const getGroupBalances = (groupId) =>
 export const createSettlement = (settlementData) => 
     api.post('/settlements', settlementData);
 
-export const confirmSettlement = (settlementId) => 
-    api.put(`/settlements/${settlementId}/confirm`);
+export const confirmSettlement = (settlementId, paymentMethod) => 
+    api.put(`/settlements/${settlementId}/confirm`, { paymentMethod });
 
 export const setSettlementPeriod = (groupId, period) =>
     api.post(`/groups/${groupId}/settlement-period`, { period });
@@ -55,3 +55,6 @@ export const getNotifications = () =>
 
 export const markNotificationRead = (notificationId) =>
     api.put(`/notifications/${notificationId}/read`);
+
+export const getUnpaidSettlements = (userId) =>
+    api.get(`/users/${userId}/pending_settlements`);
