@@ -9,7 +9,8 @@ import {
     getGroupBalances,
     addExpense,
     getSettlementSummary,
-    setSettlementPeriod
+    setSettlementPeriod,
+    finalizeGroupSplits
 } from '../services/api';
 import SettlementConfig from './SettlementConfig';
 
@@ -29,6 +30,8 @@ const Group = () => {
     });
     const [settlementPeriod, setSettlementPeriodState] = useState('1m'); // Default 1 month
     const [showSettlementConfig, setShowSettlementConfig] = useState(false);
+    const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
+    const [finalizedSettlements, setFinalizedSettlements] = useState(null);
 
     useEffect(() => {
         loadGroupData();
@@ -36,18 +39,10 @@ const Group = () => {
 
     const loadGroupData = async () => {
         try {
-            let expensesUrl = `/groups/${groupId}/expenses`;
-            let summaryUrl = `/groups/${groupId}/settlements/summary`;
-            
-            if (timeFilter !== 'all') {
-                expensesUrl += `?period=${timeFilter}`;
-                summaryUrl += `?period=${timeFilter}`;
-            }
-
             const [expensesRes, balancesRes, summaryRes] = await Promise.all([
-                getGroupExpenses(expensesUrl),
+                getGroupExpenses(groupId, timeFilter !== 'all' ? timeFilter : null),
                 getGroupBalances(groupId),
-                getSettlementSummary(summaryUrl)
+                getSettlementSummary(`/groups/${groupId}/settlements/summary${timeFilter !== 'all' ? `?period=${timeFilter}` : ''}`)
             ]);
             
             setExpenses(expensesRes.data);
@@ -103,6 +98,18 @@ const Group = () => {
         }
     };
 
+    const handleFinalizeSplits = async () => {
+        try {
+            const response = await finalizeGroupSplits(groupId);
+            setFinalizedSettlements(response.data);
+            setShowFinalizeDialog(true);
+            loadGroupData(); // Refresh data after finalizing
+        } catch (error) {
+            console.error('Failed to finalize splits:', error);
+            alert(error.response?.data?.detail || 'Failed to finalize splits');
+        }
+    };
+
     return (
         <Box p={3}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -114,6 +121,14 @@ const Group = () => {
                         sx={{ mr: 1 }}
                     >
                         Configure Settlement Period
+                    </Button>
+                    <Button 
+                        variant="outlined" 
+                        onClick={handleFinalizeSplits}
+                        sx={{ mr: 1 }}
+                        color="secondary"
+                    >
+                        Finalize Splits
                     </Button>
                     <Button variant="contained" onClick={() => setOpenAddExpense(true)}>
                         Add Expense
@@ -158,15 +173,15 @@ const Group = () => {
                                 primary={member.Name}
                                 secondary={
                                     <>
-                                        Net Balance: ${member.NetBalance.toFixed(2)}
-                                        {member.OwesAmount > 0 && (
+                                        Net Balance: ${Number(member.NetBalance).toFixed(2)}
+                                        {Number(member.OwesAmount) > 0 && (
                                             <Typography color="error" component="span" sx={{ ml: 2 }}>
-                                                Owes: ${member.OwesAmount.toFixed(2)}
+                                                Owes: ${Number(member.OwesAmount).toFixed(2)}
                                             </Typography>
                                         )}
-                                        {member.IsOwedAmount > 0 && (
+                                        {Number(member.IsOwedAmount) > 0 && (
                                             <Typography color="success.main" component="span" sx={{ ml: 2 }}>
-                                                Is Owed: ${member.IsOwedAmount.toFixed(2)}
+                                                Is Owed: ${Number(member.IsOwedAmount).toFixed(2)}
                                             </Typography>
                                         )}
                                     </>
@@ -269,6 +284,47 @@ const Group = () => {
                 onClose={() => setOpenSettleConfig(false)}
                 onSave={handleSettlementPeriodSave}
             />
+
+            {/* Finalize Splits Dialog */}
+            <Dialog 
+                open={showFinalizeDialog} 
+                onClose={() => setShowFinalizeDialog(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>Finalized Settlements</DialogTitle>
+                <DialogContent>
+                    {finalizedSettlements && finalizedSettlements.length > 0 ? (
+                        <List>
+                            {finalizedSettlements.map((settlement, index) => (
+                                <ListItem key={index}>
+                                    <ListItemText
+                                        primary={
+                                            <Typography>
+                                                Payment Required: ${Number(settlement.Amount).toFixed(2)}
+                                            </Typography>
+                                        }
+                                        secondary={
+                                            <>
+                                                From: User {settlement.PayerUserID}
+                                                <br />
+                                                To: User {settlement.ReceiverUserID}
+                                                <br />
+                                                Due by: {new Date(settlement.DueDate).toLocaleDateString()}
+                                            </>
+                                        }
+                                    />
+                                </ListItem>
+                            ))}
+                        </List>
+                    ) : (
+                        <Typography>No settlements to finalize</Typography>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowFinalizeDialog(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
