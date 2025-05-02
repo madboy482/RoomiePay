@@ -80,3 +80,13 @@ export const getUnpaidSettlements = (userId) =>
 
 export const finalizeGroupSplits = (groupId) =>
     api.post(`/groups/${groupId}/finalize-splits`);
+
+// Settlement endpoints
+export const getSettlementHistory = () => 
+    api.get('/settlements/history');
+
+export const processPayment = (settlementId, amount) => 
+    api.post(`/settlements/${settlementId}/process-payment`, { amount });
+
+export const getGroupSettlements = (groupId, includeAll = true) => 
+    api.post(`/groups/${groupId}/finalize-splits`, { include_all: includeAll });

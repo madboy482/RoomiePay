@@ -1,137 +1,274 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Box, 
-    Typography, 
-    Paper, 
-    List, 
-    ListItem, 
-    ListItemText, 
-    Button, 
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Divider
-} from '@mui/material';
-import { getUnpaidSettlements, confirmSettlement } from '../services/api';
+import { Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
+import { getSettlementHistory, processPayment, getGroupSettlements } from '../services/api';
 
-const Settlements = () => {
+const Settlements = ({ groupId }) => {
     const [settlements, setSettlements] = useState([]);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedSettlement, setSelectedSettlement] = useState(null);
-    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState('');
-    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [showFinalizedModal, setShowFinalizedModal] = useState(false);
+    const [finalizedSettlements, setFinalizedSettlements] = useState([]);
 
     useEffect(() => {
         loadSettlements();
-    }, []);
+    }, [groupId]);
 
     const loadSettlements = async () => {
         try {
-            const response = await getUnpaidSettlements(currentUser.UserID);
+            setLoading(true);
+            const response = await getSettlementHistory();
             setSettlements(response.data);
-        } catch (error) {
-            console.error('Failed to load settlements:', error);
+        } catch (err) {
+            console.error('Error loading settlements:', err);
+            setError('Failed to load settlements');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handlePaymentClick = (settlement) => {
+    const handlePayment = (settlement) => {
         setSelectedSettlement(settlement);
-        setShowPaymentDialog(true);
+        setPaymentAmount(settlement.Amount.toString());
+        setError('');
+        setShowPaymentModal(true);
     };
 
-    const handleConfirmPayment = async () => {
+    const handleFinalizeSplits = async () => {
         try {
-            await confirmSettlement(selectedSettlement.SettlementID, paymentMethod);
-            setShowPaymentDialog(false);
-            setPaymentMethod('');
-            loadSettlements(); // Refresh settlements list
-        } catch (error) {
-            console.error('Failed to confirm payment:', error);
-            alert('Failed to confirm payment');
+            const response = await getGroupSettlements(groupId);
+            setFinalizedSettlements(response.data);
+            setShowFinalizedModal(true);
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Error finalizing splits');
         }
     };
+
+    const handleProcessPayment = async () => {
+        try {
+            if (!paymentAmount || parseFloat(paymentAmount) !== selectedSettlement.Amount) {
+                setError('Payment amount must match the required amount');
+                return;
+            }
+
+            await processPayment(selectedSettlement.SettlementID, parseFloat(paymentAmount));
+            setShowPaymentModal(false);
+            loadSettlements();
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Error processing payment');
+        }
+    };
+
+    const formatDate = (dateStr) => {
+        return new Date(dateStr).toLocaleDateString();
+    };
+
+    if (loading) {
+        return <div>Loading settlements...</div>;
+    }
 
     return (
-        <Box p={3}>
-            <Typography variant="h4" gutterBottom>
-                Your Settlements
-            </Typography>
-
-            <List>
-                {settlements.map((settlement) => (
-                    <Paper key={settlement.SettlementID} elevation={2} sx={{ mb: 2 }}>
-                        <ListItem>
-                            <ListItemText
-                                primary={
-                                    <Typography variant="h6">
-                                        Amount: ${Number(settlement.Amount).toFixed(2)}
-                                    </Typography>
-                                }
-                                secondary={
-                                    <>
-                                        <Typography component="span" variant="body2">
-                                            {settlement.PayerUserID === currentUser.UserID ? 
-                                                `You need to pay ${settlement.ReceiverName}` : 
-                                                `You will receive payment from ${settlement.PayerName}`}
-                                        </Typography>
-                                        <br />
-                                        <Typography component="span" variant="body2">
-                                            Due by: {new Date(settlement.DueDate).toLocaleDateString()}
-                                        </Typography>
-                                        {settlement.Status === 'Pending' && settlement.PayerUserID === currentUser.UserID && (
-                                            <Button
-                                                variant="contained"
-                                                color="primary"
-                                                sx={{ mt: 1 }}
-                                                onClick={() => handlePaymentClick(settlement)}
-                                            >
-                                                Make Payment
-                                            </Button>
-                                        )}
-                                    </>
-                                }
-                            />
-                        </ListItem>
-                    </Paper>
-                ))}
-                {settlements.length === 0 && (
-                    <Typography variant="body1" color="textSecondary">
-                        No pending settlements
-                    </Typography>
+        <div className="settlements-container">
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <h2>All Settlements</h2>
+                {groupId && (
+                    <Button variant="primary" onClick={handleFinalizeSplits}>
+                        Finalize Splits
+                    </Button>
                 )}
-            </List>
+            </div>
 
-            {/* Payment Dialog */}
-            <Dialog open={showPaymentDialog} onClose={() => setShowPaymentDialog(false)}>
-                <DialogTitle>Confirm Payment</DialogTitle>
-                <DialogContent>
-                    <Typography gutterBottom>
-                        Amount to pay: ${selectedSettlement?.Amount.toFixed(2)}
-                    </Typography>
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Payment Method"
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                        placeholder="e.g., UPI, Bank Transfer, Cash"
-                        required
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
-                    <Button 
-                        onClick={handleConfirmPayment}
-                        variant="contained"
-                        disabled={!paymentMethod}
-                    >
+            {error && !showPaymentModal && (
+                <Alert variant="danger" onClose={() => setError('')} dismissible>
+                    {error}
+                </Alert>
+            )}
+
+            <Card>
+                <Card.Body>
+                    <Table striped bordered hover>
+                        <thead>
+                            <tr>
+                                <th>Group</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Amount</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {settlements.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" className="text-center">
+                                        No settlements found
+                                    </td>
+                                </tr>
+                            ) : (
+                                settlements.map((settlement) => (
+                                    <tr key={settlement.SettlementID}>
+                                        <td>{settlement.GroupName}</td>
+                                        <td>{settlement.PayerName}</td>
+                                        <td>{settlement.ReceiverName}</td>
+                                        <td>${settlement.Amount.toFixed(2)}</td>
+                                        <td>{formatDate(settlement.DueDate)}</td>
+                                        <td>
+                                            <span className={`badge ${
+                                                settlement.Status === 'Pending' ? 'bg-warning' :
+                                                settlement.Status === 'Confirmed' ? 'bg-success' :
+                                                'bg-secondary'
+                                            }`}>
+                                                {settlement.Status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {settlement.Status === 'Pending' && (
+                                                <Button 
+                                                    variant="primary"
+                                                    size="sm"
+                                                    onClick={() => handlePayment(settlement)}
+                                                >
+                                                    Pay Now
+                                                </Button>
+                                            )}
+                                            {settlement.Status === 'Confirmed' && (
+                                                <span className="text-success">
+                                                    Paid on {formatDate(settlement.PaymentDate)}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </Table>
+                </Card.Body>
+            </Card>
+
+            {/* Payment Modal */}
+            <Modal show={showPaymentModal} onHide={() => setShowPaymentModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Process Payment</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {selectedSettlement && (
+                        <div>
+                            <div className="payment-details p-3 mb-4 border rounded bg-light">
+                                <h5 className="mb-3">Payment Details</h5>
+                                <p className="mb-2">
+                                    <strong>Payment Required: </strong>
+                                    <span className="text-primary">${selectedSettlement.Amount.toFixed(2)}</span>
+                                </p>
+                                <p className="mb-2">
+                                    <strong>From: </strong>{selectedSettlement.PayerName}
+                                </p>
+                                <p className="mb-2">
+                                    <strong>To: </strong>{selectedSettlement.ReceiverName}
+                                </p>
+                                <p className="mb-2">
+                                    <strong>Due by: </strong>{formatDate(selectedSettlement.DueDate)}
+                                </p>
+                                <p className="mb-0">
+                                    <strong>Group: </strong>{selectedSettlement.GroupName}
+                                </p>
+                            </div>
+                            
+                            <Form>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Enter Payment Amount</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        step="0.01"
+                                        value={paymentAmount}
+                                        onChange={(e) => setPaymentAmount(e.target.value)}
+                                        isInvalid={!!error}
+                                    />
+                                    <Form.Text className="text-muted">
+                                        Amount must match the required payment exactly
+                                    </Form.Text>
+                                </Form.Group>
+                            </Form>
+                            
+                            {error && (
+                                <Alert variant="danger" className="mt-3">
+                                    {error}
+                                </Alert>
+                            )}
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleProcessPayment}>
                         Confirm Payment
                     </Button>
-                </DialogActions>
-            </Dialog>
-        </Box>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Finalized Settlements Modal */}
+            <Modal 
+                show={showFinalizedModal} 
+                onHide={() => setShowFinalizedModal(false)}
+                size="lg"
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title>Finalized Settlements</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {finalizedSettlements.length === 0 ? (
+                        <Alert variant="info">
+                            No settlements to finalize.
+                        </Alert>
+                    ) : (
+                        <div>
+                            <Table striped bordered hover>
+                                <thead>
+                                    <tr>
+                                        <th>From</th>
+                                        <th>To</th>
+                                        <th>Amount</th>
+                                        <th>Due Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {finalizedSettlements.map((settlement) => (
+                                        <tr key={settlement.SettlementID}>
+                                            <td>{settlement.PayerName}</td>
+                                            <td>{settlement.ReceiverName}</td>
+                                            <td>${settlement.Amount.toFixed(2)}</td>
+                                            <td>{formatDate(settlement.DueDate)}</td>
+                                            <td>
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setShowFinalizedModal(false);
+                                                        handlePayment(settlement);
+                                                    }}
+                                                >
+                                                    Pay Now
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowFinalizedModal(false)}>
+                        Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        </div>
     );
 };
 
