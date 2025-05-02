@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
     Box, Button, Typography, Paper, Dialog, TextField,
-    List, ListItem, ListItemText, Divider, FormControl, InputLabel, Select, MenuItem
+    List, ListItem, ListItemText, Divider, FormControl, InputLabel, Select, MenuItem, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import {
     getGroupExpenses,
@@ -27,6 +27,8 @@ const Group = () => {
         SplitType: 'EQUAL',
         PaidByUserID: JSON.parse(localStorage.getItem('user'))?.UserID
     });
+    const [settlementPeriod, setSettlementPeriodState] = useState('1m'); // Default 1 month
+    const [showSettlementConfig, setShowSettlementConfig] = useState(false);
 
     useEffect(() => {
         loadGroupData();
@@ -81,6 +83,16 @@ const Group = () => {
         }
     };
 
+    const handleSettlementPeriodChange = async (period) => {
+        try {
+            await setSettlementPeriod(groupId, period);
+            alert('Settlement period updated successfully');
+        } catch (error) {
+            console.error('Failed to update settlement period:', error);
+            alert('Failed to update settlement period');
+        }
+    };
+
     const handleSettlementPeriodSave = async (period) => {
         try {
             await setSettlementPeriod(groupId, period);
@@ -96,8 +108,12 @@ const Group = () => {
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4">Group Expenses</Typography>
                 <Box>
-                    <Button variant="outlined" onClick={() => setOpenSettleConfig(true)} sx={{ mr: 1 }}>
-                        Configure Settlements
+                    <Button 
+                        variant="outlined" 
+                        onClick={() => setShowSettlementConfig(true)}
+                        sx={{ mr: 1 }}
+                    >
+                        Configure Settlement Period
                     </Button>
                     <Button variant="contained" onClick={() => setOpenAddExpense(true)}>
                         Add Expense
@@ -162,19 +178,28 @@ const Group = () => {
             </Paper>
 
             {/* Expenses List */}
-            <Paper elevation={3} sx={{ p: 2 }}>
+            <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
                 <Typography variant="h6" gutterBottom>Recent Expenses</Typography>
                 <List>
                     {expenses.map((expense) => (
                         <React.Fragment key={expense.ExpenseID}>
                             <ListItem>
                                 <ListItemText
-                                    primary={expense.Description}
+                                    primary={
+                                        <Typography>
+                                            {expense.Description} - 
+                                            <span style={{ fontWeight: 'bold' }}> ${expense.Amount.toFixed(2)}</span>
+                                        </Typography>
+                                    }
                                     secondary={
                                         <>
-                                            Amount: ${expense.Amount.toFixed(2)} • 
-                                            Paid by: {expense.PaidByUser.Name} •
+                                            <Typography component="span" color="text.primary">
+                                                Paid by: {expense.PaidByUser.Name}
+                                            </Typography>
+                                            <br />
                                             Date: {new Date(expense.Date).toLocaleString()}
+                                            <br />
+                                            Status: {expense.IsSettled ? 'Settled' : 'Pending Settlement'}
                                         </>
                                     }
                                 />
@@ -212,6 +237,30 @@ const Group = () => {
                         </Button>
                     </form>
                 </Box>
+            </Dialog>
+
+            {/* Settlement Config Dialog */}
+            <Dialog open={showSettlementConfig} onClose={() => setShowSettlementConfig(false)}>
+                <DialogTitle>Configure Settlement Period</DialogTitle>
+                <DialogContent>
+                    <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Settlement Period</InputLabel>
+                        <Select
+                            value={settlementPeriod}
+                            onChange={(e) => handleSettlementPeriodChange(e.target.value)}
+                        >
+                            <MenuItem value="1h">Every Hour</MenuItem>
+                            <MenuItem value="6h">Every 6 Hours</MenuItem>
+                            <MenuItem value="12h">Every 12 Hours</MenuItem>
+                            <MenuItem value="1d">Daily</MenuItem>
+                            <MenuItem value="1w">Weekly</MenuItem>
+                            <MenuItem value="1m">Monthly</MenuItem>
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowSettlementConfig(false)}>Close</Button>
+                </DialogActions>
             </Dialog>
 
             {/* Add Settlement Config Dialog */}
