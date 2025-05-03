@@ -1,19 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Badge,
-    IconButton,
-    Menu,
-    MenuItem,
-    ListItemText,
-    Typography,
-    Divider,
-    Button,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField
-} from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { getNotifications, markNotificationRead, confirmSettlement } from '../services/api';
 
@@ -83,87 +68,96 @@ const Notifications = () => {
 
     return (
         <>
-            <IconButton color="inherit" onClick={handleClick}>
-                <Badge badgeContent={unreadCount} color="error">
-                    <NotificationsIcon />
-                </Badge>
-            </IconButton>
-            
-            <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleClose}
-                PaperProps={{
-                    style: {
-                        maxHeight: 300,
-                        width: 320,
-                    },
-                }}
+            <button 
+                className="text-white p-2 rounded-full focus:outline-none relative"
+                onClick={handleClick}
             >
-                {notifications.length === 0 ? (
-                    <MenuItem>
-                        <ListItemText primary="No notifications" />
-                    </MenuItem>
-                ) : (
-                    notifications.map((notification) => (
-                        <React.Fragment key={notification.NotificationID}>
-                            <MenuItem 
-                                onClick={() => handleNotificationClick(notification)}
-                                style={{
-                                    backgroundColor: notification.IsRead ? '#f5f5f5' : 'white'
-                                }}
-                            >
-                                <ListItemText
-                                    primary={notification.Message}
-                                    secondary={
-                                        <Typography variant="caption" color="textSecondary">
-                                            {new Date(notification.CreatedAt).toLocaleString()}
-                                            {notification.Type === 'SETTLEMENT_DUE' && (
-                                                <Typography
-                                                    component="span"
-                                                    color="error"
-                                                    style={{ marginLeft: 8 }}
-                                                >
-                                                    • Payment Required
-                                                </Typography>
-                                            )}
-                                        </Typography>
-                                    }
-                                />
-                            </MenuItem>
-                            <Divider />
-                        </React.Fragment>
-                    ))
+                <NotificationsIcon />
+                {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                        {unreadCount}
+                    </span>
                 )}
-            </Menu>
-
-            <Dialog open={showPaymentDialog} onClose={() => setShowPaymentDialog(false)}>
-                <DialogTitle>Confirm Payment</DialogTitle>
-                <DialogContent>
-                    <Typography gutterBottom>
-                        {selectedNotification?.Message}
-                    </Typography>
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Payment Method"
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                        placeholder="e.g., UPI, Bank Transfer, Cash"
-                        required
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
-                    <Button 
-                        onClick={handlePayment}
-                        variant="contained"
-                        disabled={!paymentMethod}
+            </button>
+            
+            {anchorEl && (
+                <div className="fixed inset-0 z-50" onClick={handleClose}>
+                    <div 
+                        className="absolute bg-white rounded-md shadow-lg overflow-hidden max-h-80 w-80"
+                        style={{
+                            top: anchorEl.getBoundingClientRect().bottom + window.scrollY,
+                            left: anchorEl.getBoundingClientRect().left + window.scrollX - 280, // Position to the left of icon
+                        }}
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        Confirm Payment
-                    </Button>
-                </DialogActions>
-            </Dialog>
+                        <div className="overflow-y-auto max-h-80">
+                            {notifications.length === 0 ? (
+                                <div className="px-4 py-3">
+                                    <p>No notifications</p>
+                                </div>
+                            ) : (
+                                notifications.map((notification) => (
+                                    <React.Fragment key={notification.NotificationID}>
+                                        <div 
+                                            className={`px-4 py-3 hover:bg-gray-100 cursor-pointer ${notification.IsRead ? 'bg-gray-50' : 'bg-white'}`}
+                                            onClick={() => handleNotificationClick(notification)}
+                                        >
+                                            <p className="text-sm font-medium text-gray-900">{notification.Message}</p>
+                                            <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                                <span>{new Date(notification.CreatedAt).toLocaleString()}</span>
+                                                {notification.Type === 'SETTLEMENT_DUE' && (
+                                                    <span className="ml-2 text-red-500 font-medium">• Payment Required</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <hr className="border-gray-200" />
+                                    </React.Fragment>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showPaymentDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h2 className="text-xl font-semibold mb-4">Confirm Payment</h2>
+                        <p className="mb-4 text-gray-700">
+                            {selectedNotification?.Message}
+                        </p>
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="paymentMethod">
+                                Payment Method
+                            </label>
+                            <input
+                                id="paymentMethod"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                type="text"
+                                value={paymentMethod}
+                                onChange={(e) => setPaymentMethod(e.target.value)}
+                                placeholder="e.g., UPI, Bank Transfer, Cash"
+                                required
+                            />
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                            <button 
+                                className="px-4 py-2 text-gray-700 hover:text-gray-900"
+                                onClick={() => setShowPaymentDialog(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                className={`px-4 py-2 text-white rounded ${paymentMethod ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'}`}
+                                onClick={handlePayment}
+                                disabled={!paymentMethod}
+                            >
+                                Confirm Payment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
