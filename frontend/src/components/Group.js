@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-    Box, Button, Typography, Paper, Dialog, TextField,
-    List, ListItem, ListItemText, Divider, FormControl, InputLabel, Select, MenuItem, DialogTitle, DialogContent, DialogActions
-} from '@mui/material';
-import {
     getGroupExpenses,
     getGroupBalances,
     addExpense,
@@ -125,174 +121,204 @@ const Group = () => {
     };
 
     return (
-        <Box p={3}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h4">Group Expenses</Typography>
-                <Box>
-                    <Button 
-                        variant="outlined" 
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">Group Expenses</h1>
+                <div className="flex space-x-2">
+                    <button 
+                        className="border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50"
                         onClick={() => setShowSettlementConfig(true)}
-                        sx={{ mr: 1 }}
                     >
                         Configure Settlement Period
-                    </Button>
-                    <Button 
-                        variant="outlined" 
+                    </button>
+                    <button 
+                        className="border border-purple-600 text-purple-600 px-4 py-2 rounded hover:bg-purple-50"
                         onClick={handleFinalizeSplits}
-                        sx={{ mr: 1 }}
-                        color="secondary"
                     >
                         Finalize Splits
-                    </Button>
-                    <Button variant="contained" onClick={() => setOpenAddExpense(true)}>
+                    </button>
+                    <button 
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                        onClick={() => setOpenAddExpense(true)}
+                    >
                         Add Expense
-                    </Button>
-                </Box>
-            </Box>
+                    </button>
+                </div>
+            </div>
 
             {/* Time Filter */}
-            <Box mb={3}>
-                <FormControl fullWidth>
-                    <InputLabel>Time Period</InputLabel>
-                    <Select value={timeFilter} onChange={handleTimeFilterChange}>
-                        <MenuItem value="all">All Time</MenuItem>
-                        <MenuItem value="day">Last 24 Hours</MenuItem>
-                        <MenuItem value="week">Last Week</MenuItem>
-                        <MenuItem value="month">Last Month</MenuItem>
-                        <MenuItem value="year">Last Year</MenuItem>
-                    </Select>
-                </FormControl>
-            </Box>
+            <div className="mb-6">
+                <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Time Period
+                    </label>
+                    <select 
+                        className="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        value={timeFilter} 
+                        onChange={handleTimeFilterChange}
+                    >
+                        <option value="all">All Time</option>
+                        <option value="day">Last 24 Hours</option>
+                        <option value="week">Last Week</option>
+                        <option value="month">Last Month</option>
+                        <option value="year">Last Year</option>
+                    </select>
+                </div>
+            </div>
 
             {/* Settlement Summary */}
             {settlementSummary && (
-                <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>Settlement Summary</Typography>
-                    <Typography>
+                <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <h2 className="text-lg font-semibold mb-2">Settlement Summary</h2>
+                    <p className="text-gray-700">
                         Period: {settlementSummary.Period}
-                    </Typography>
-                    <Typography>
+                    </p>
+                    <p className="text-gray-700">
                         Total Amount: ${settlementSummary.TotalAmount}
-                    </Typography>
-                </Paper>
+                    </p>
+                </div>
             )}
 
             {/* Balances Section */}
-            <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>Balances</Typography>
-                <List>
+            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h2 className="text-lg font-semibold mb-2">Balances</h2>
+                <ul className="divide-y divide-gray-200">
                     {balances.Members.map((member) => (
-                        <ListItem key={member.UserID}>
-                            <ListItemText
-                                primary={member.Name}
-                                secondary={
-                                    <>
-                                        Net Balance: ${Number(member.NetBalance).toFixed(2)}
-                                        {Number(member.OwesAmount) > 0 && (
-                                            <Typography color="error" component="span" sx={{ ml: 2 }}>
-                                                Owes: ${Number(member.OwesAmount).toFixed(2)}
-                                            </Typography>
-                                        )}
-                                        {Number(member.IsOwedAmount) > 0 && (
-                                            <Typography color="success.main" component="span" sx={{ ml: 2 }}>
-                                                Is Owed: ${Number(member.IsOwedAmount).toFixed(2)}
-                                            </Typography>
-                                        )}
-                                    </>
-                                }
-                            />
-                        </ListItem>
+                        <li key={member.UserID} className="py-3">
+                            <div>
+                                <p className="font-medium">{member.Name}</p>
+                                <div className="text-sm text-gray-700">
+                                    Net Balance: ${Number(member.NetBalance).toFixed(2)}
+                                    {Number(member.OwesAmount) > 0 && (
+                                        <span className="ml-2 text-red-600">
+                                            Owes: ${Number(member.OwesAmount).toFixed(2)}
+                                        </span>
+                                    )}
+                                    {Number(member.IsOwedAmount) > 0 && (
+                                        <span className="ml-2 text-green-600">
+                                            Is Owed: ${Number(member.IsOwedAmount).toFixed(2)}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </li>
                     ))}
-                </List>
-            </Paper>
+                </ul>
+            </div>
 
             {/* Expenses List */}
-            <Paper elevation={3} sx={{ p: 2, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>Recent Expenses</Typography>
-                <List>
+            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                <h2 className="text-lg font-semibold mb-2">Recent Expenses</h2>
+                <ul className="divide-y divide-gray-200">
                     {expenses.map((expense) => (
-                        <React.Fragment key={expense.ExpenseID}>
-                            <ListItem>
-                                <ListItemText
-                                    primary={
-                                        <Typography>
-                                            {expense.Description} - 
-                                            <span style={{ fontWeight: 'bold' }}> ${expense.Amount.toFixed(2)}</span>
-                                        </Typography>
-                                    }
-                                    secondary={
-                                        <>
-                                            <Typography component="span" color="text.primary">
-                                                Paid by: {expense.PaidByUser.Name}
-                                            </Typography>
-                                            <br />
-                                            Date: {new Date(expense.Date).toLocaleString()}
-                                            <br />
-                                            Status: {expense.IsSettled ? 'Settled' : 'Pending Settlement'}
-                                        </>
-                                    }
-                                />
-                            </ListItem>
-                            <Divider />
-                        </React.Fragment>
+                        <li key={expense.ExpenseID} className="py-3">
+                            <div>
+                                <p>
+                                    {expense.Description} - 
+                                    <span className="font-bold"> ${expense.Amount.toFixed(2)}</span>
+                                </p>
+                                <div className="text-sm text-gray-700 mt-1">
+                                    <p className="text-gray-900">
+                                        Paid by: {expense.PaidByUser.Name}
+                                    </p>
+                                    <p>
+                                        Date: {new Date(expense.Date).toLocaleString()}
+                                    </p>
+                                    <p>
+                                        Status: {expense.IsSettled ? 'Settled' : 'Pending Settlement'}
+                                    </p>
+                                </div>
+                            </div>
+                        </li>
                     ))}
-                </List>
-            </Paper>
+                </ul>
+            </div>
 
             {/* Add Expense Dialog */}
-            <Dialog open={openAddExpense} onClose={() => setOpenAddExpense(false)}>
-                <Box p={3} width={300}>
-                    <Typography variant="h6" gutterBottom>Add New Expense</Typography>
-                    <form onSubmit={handleAddExpense}>
-                        <TextField
-                            fullWidth
-                            margin="normal"
-                            label="Amount"
-                            type="number"
-                            value={expenseForm.Amount}
-                            onChange={(e) => setExpenseForm({ ...expenseForm, Amount: e.target.value })}
-                            required
-                        />
-                        <TextField
-                            fullWidth
-                            margin="normal"
-                            label="Description"
-                            value={expenseForm.Description}
-                            onChange={(e) => setExpenseForm({ ...expenseForm, Description: e.target.value })}
-                            required
-                        />
-                        <Button type="submit" fullWidth variant="contained" sx={{ mt: 2 }}>
-                            Add Expense
-                        </Button>
-                    </form>
-                </Box>
-            </Dialog>
+            {openAddExpense && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h2 className="text-xl font-semibold mb-4">Add New Expense</h2>
+                        <form onSubmit={handleAddExpense}>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="amount">
+                                    Amount
+                                </label>
+                                <input
+                                    id="amount"
+                                    type="number"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={expenseForm.Amount}
+                                    onChange={(e) => setExpenseForm({ ...expenseForm, Amount: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="description">
+                                    Description
+                                </label>
+                                <input
+                                    id="description"
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={expenseForm.Description}
+                                    onChange={(e) => setExpenseForm({ ...expenseForm, Description: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <button 
+                                type="submit"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md mt-4"
+                            >
+                                Add Expense
+                            </button>
+                            <button
+                                type="button"
+                                className="w-full text-gray-500 hover:text-gray-700 mt-2"
+                                onClick={() => setOpenAddExpense(false)}
+                            >
+                                Cancel
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Settlement Config Dialog */}
-            <Dialog open={showSettlementConfig} onClose={() => setShowSettlementConfig(false)}>
-                <DialogTitle>Configure Settlement Period</DialogTitle>
-                <DialogContent>
-                    <FormControl fullWidth sx={{ mt: 2 }}>
-                        <InputLabel>Settlement Period</InputLabel>
-                        <Select
-                            value={settlementPeriod}
-                            onChange={(e) => handleSettlementPeriodChange(e.target.value)}
-                        >
-                            <MenuItem value="1h">Every Hour</MenuItem>
-                            <MenuItem value="6h">Every 6 Hours</MenuItem>
-                            <MenuItem value="12h">Every 12 Hours</MenuItem>
-                            <MenuItem value="1d">Daily</MenuItem>
-                            <MenuItem value="1w">Weekly</MenuItem>
-                            <MenuItem value="1m">Monthly</MenuItem>
-                        </Select>
-                    </FormControl>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setShowSettlementConfig(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
+            {showSettlementConfig && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h2 className="text-xl font-semibold mb-4">Configure Settlement Period</h2>
+                        <div className="mb-4">
+                            <label className="block text-gray-700 text-sm font-medium mb-1">
+                                Settlement Period
+                            </label>
+                            <select
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={settlementPeriod}
+                                onChange={(e) => handleSettlementPeriodChange(e.target.value)}
+                            >
+                                <option value="1h">Every Hour</option>
+                                <option value="6h">Every 6 Hours</option>
+                                <option value="12h">Every 12 Hours</option>
+                                <option value="1d">Daily</option>
+                                <option value="1w">Weekly</option>
+                                <option value="1m">Monthly</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-end">
+                            <button 
+                                className="text-blue-600 hover:text-blue-800 font-medium"
+                                onClick={() => setShowSettlementConfig(false)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-            {/* Add Settlement Config Dialog */}
+            {/* Add Settlement Config Component */}
             <SettlementConfig
                 open={openSettleConfig}
                 onClose={() => setOpenSettleConfig(false)}
@@ -300,64 +326,58 @@ const Group = () => {
             />
 
             {/* Finalize Splits Dialog */}
-            <Dialog 
-                open={showFinalizeDialog} 
-                onClose={() => setShowFinalizeDialog(false)}
-                maxWidth="md"
-                fullWidth
-            >
-                <DialogTitle>Finalized Settlements</DialogTitle>
-                <DialogContent>
-                    {finalizedSettlements && finalizedSettlements.length > 0 ? (
-                        <List>
-                            {finalizedSettlements.map((settlement, index) => (
-                                <ListItem key={index}>
-                                    <ListItemText
-                                        primary={
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography>
-                                                    Payment Required: ${Number(settlement.Amount).toFixed(2)}
-                                                </Typography>
-                                                <Button 
-                                                    variant="contained" 
-                                                    color="primary"
-                                                    onClick={() => handlePayNow(settlement)}
-                                                    size="small"
-                                                >
-                                                    Pay Now
-                                                </Button>
-                                            </Box>
-                                        }
-                                        secondary={
-                                            <>
-                                                From: {settlement.PayerName}
-                                                <br />
-                                                To: {settlement.ReceiverName}
-                                                <br />
-                                                Due by: {new Date(settlement.DueDate).toLocaleDateString()}
-                                            </>
-                                        }
-                                    />
-                                </ListItem>
-                            ))}
-                        </List>
-                    ) : (
-                        <Typography>No settlements to finalize</Typography>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setShowFinalizeDialog(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
+            {showFinalizeDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-3xl">
+                        <h2 className="text-xl font-semibold mb-4">Finalized Settlements</h2>
+                        
+                        {finalizedSettlements && finalizedSettlements.length > 0 ? (
+                            <ul className="divide-y divide-gray-200">
+                                {finalizedSettlements.map((settlement, index) => (
+                                    <li key={index} className="py-3">
+                                        <div className="flex justify-between items-center">
+                                            <p className="font-medium">
+                                                Payment Required: ${Number(settlement.Amount).toFixed(2)}
+                                            </p>
+                                            <button 
+                                                className="bg-blue-600 text-white px-3 py-1 text-sm rounded hover:bg-blue-700"
+                                                onClick={() => handlePayNow(settlement)}
+                                            >
+                                                Pay Now
+                                            </button>
+                                        </div>
+                                        <div className="text-sm text-gray-700 mt-1">
+                                            <p>From: {settlement.PayerName}</p>
+                                            <p>To: {settlement.ReceiverName}</p>
+                                            <p>Due by: {new Date(settlement.DueDate).toLocaleDateString()}</p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>No settlements to finalize</p>
+                        )}
+                        
+                        <div className="flex justify-end mt-4">
+                            <button 
+                                className="text-blue-600 hover:text-blue-800 font-medium"
+                                onClick={() => setShowFinalizeDialog(false)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-            {/* Payment Portal */}
+            {/* Payment Portal Component */}
             <PaymentPortal
                 open={showPaymentPortal}
                 onClose={() => setShowPaymentPortal(false)}
                 settlement={selectedSettlement}
                 onPaymentComplete={handlePaymentComplete}
             />
-        </Box>
+        </div>
     );
 };
 
