@@ -119,3 +119,6 @@ export const processPayment = (settlementId, amount) =>
 
 export const getGroupSettlements = (groupId, includeAll = true) => 
     api.post(`/groups/${groupId}/finalize-splits`, { include_all: includeAll });
+
+export const getGroupInviteCode = (groupId) =>
+    api.get(`/groups/${groupId}/invite-code`);
