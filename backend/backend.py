@@ -648,6 +648,108 @@ async def get_settlements_summary(
         Settlements=settlements
     )
 
+@app.get("/settlements/history", response_model=List[schemas.DetailedSettlement])
+async def get_settlement_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get settlement history for the current user"""
+    user_id = current_user.UserID
+    
+    # Get all settlements where the user is either payer or receiver
+    settlements = db.query(models.Settlement)\
+        .filter(
+            (models.Settlement.PayerUserID == user_id) | 
+            (models.Settlement.ReceiverUserID == user_id)
+        ).all()
+    
+    # Get the names of all users involved in these settlements
+    user_ids = set()
+    for settlement in settlements:
+        user_ids.add(settlement.PayerUserID)
+        user_ids.add(settlement.ReceiverUserID)
+    
+    users = db.query(models.User)\
+        .filter(models.User.UserID.in_(user_ids))\
+        .all()
+    
+    user_map = {user.UserID: user.Name for user in users}
+    
+    # Get group information
+    group_ids = set(settlement.GroupID for settlement in settlements)
+    groups = db.query(models.UserGroup)\
+        .filter(models.UserGroup.GroupID.in_(group_ids))\
+        .all()
+    
+    group_map = {group.GroupID: group.GroupName for group in groups}
+    
+    # Build response with detailed settlements
+    detailed_settlements = []
+    for settlement in settlements:
+        detailed = {
+            **settlement.__dict__,
+            "PayerName": user_map.get(settlement.PayerUserID, "Unknown"),
+            "ReceiverName": user_map.get(settlement.ReceiverUserID, "Unknown"),
+            "GroupName": group_map.get(settlement.GroupID, "Unknown")
+        }
+        # Remove SQLAlchemy state
+        if "_sa_instance_state" in detailed:
+            detailed.pop("_sa_instance_state")
+            
+        detailed_settlements.append(detailed)
+    
+    return detailed_settlements
+
+@app.get("/groups/{group_id}/settlements", response_model=List[schemas.DetailedSettlement])
+async def get_group_settlements(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all settlements for a specific group"""
+    # Verify user is in group
+    member = db.query(models.GroupMember)\
+        .filter(
+            models.GroupMember.GroupID == group_id,
+            models.GroupMember.UserID == current_user.UserID
+        ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this group")
+    
+    # Get all settlements for the group
+    settlements = db.query(models.Settlement)\
+        .filter(models.Settlement.GroupID == group_id)\
+        .all()
+    
+    # Get all member names
+    user_ids = set()
+    for settlement in settlements:
+        user_ids.add(settlement.PayerUserID)
+        user_ids.add(settlement.ReceiverUserID)
+    
+    users = db.query(models.User)\
+        .filter(models.User.UserID.in_(user_ids))\
+        .all()
+    
+    user_map = {user.UserID: user.Name for user in users}
+    
+    # Build response with detailed settlements
+    detailed_settlements = []
+    for settlement in settlements:
+        detailed = {
+            **settlement.__dict__,
+            "PayerName": user_map.get(settlement.PayerUserID, "Unknown"),
+            "ReceiverName": user_map.get(settlement.ReceiverUserID, "Unknown"),
+            "GroupName": "Group" # Already filtered by group_id
+        }
+        # Remove SQLAlchemy state
+        if "_sa_instance_state" in detailed:
+            detailed.pop("_sa_instance_state")
+            
+        detailed_settlements.append(detailed)
+    
+    return detailed_settlements
+
 # Invitation endpoints
 @app.post("/invitations", response_model=schemas.Invitation)
 async def create_invitation(
@@ -839,9 +941,17 @@ async def mark_notification_read(
 @app.post("/groups/{group_id}/finalize-splits", response_model=List[schemas.DetailedSettlement])
 async def finalize_group_splits(
     group_id: int,
+    request: dict,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """
+    Calculate and create settlements for a group based on current balances.
+    If include_all=True, return all potential settlements including ones not yet created.
+    If force_create=True, create new settlements in the database.
+    """
+    print(f"Finalizing splits for group {group_id}, request: {request}")
+    
     # Verify user is in group
     member = db.query(models.GroupMember)\
         .filter(
@@ -850,151 +960,181 @@ async def finalize_group_splits(
         ).first()
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
-
-    # Get only UNSETTLED expenses for the group
-    expenses = db.query(models.Expense)\
-        .filter(
-            models.Expense.GroupID == group_id,
-            models.Expense.IsSettled == False
-        ).all()
-
-    if not expenses:
-        raise HTTPException(status_code=404, detail="No unsettled expenses found in this group")
-
-    # Get all members
-    members = db.query(models.GroupMember)\
-        .join(models.User)\
-        .add_columns(models.User.Name)\
-        .filter(models.GroupMember.GroupID == group_id)\
-        .all()
-
-    # Calculate total paid by each person for UNSETTLED expenses only
-    total_paid = {}
-    for expense in expenses:
-        if expense.PaidByUserID not in total_paid:
-            total_paid[expense.PaidByUserID] = Decimal('0')
-        total_paid[expense.PaidByUserID] += expense.Amount
-
-    # Calculate equal share per person
-    total_amount = sum(total_paid.values())
-    share_per_person = total_amount / Decimal(str(len(members)))
-
-    # Calculate net balances for each member
+    
+    include_all = request.get('include_all', False)
+    force_create = request.get('force_create', False)
+    
+    # Get current balances (these already account for confirmed settlements)
+    balances_response = await get_group_balances(group_id, db, current_user)
+    members = balances_response.Members
+    
+    # Get group name
+    group = db.query(models.UserGroup).filter(models.UserGroup.GroupID == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    group_name = group.GroupName
+    
+    # Find members who owe money (negative balance) and who are owed money (positive balance)
+    debtors = [m for m in members if m.NetBalance < 0]
+    creditors = [m for m in members if m.NetBalance > 0]
+    
+    # Sort by amount (largest debt and credit first)
+    debtors.sort(key=lambda x: x.NetBalance)  # Ascending: most negative first
+    creditors.sort(key=lambda x: x.NetBalance, reverse=True)  # Descending: most positive first
+    
+    print(f"Debtors: {len(debtors)}, Creditors: {len(creditors)}")
+    for d in debtors:
+        print(f"Debtor: {d.Name} ({d.UserID}) owes ${abs(d.NetBalance)}")
+    for c in creditors:
+        print(f"Creditor: {c.Name} ({c.UserID}) is owed ${c.NetBalance}")
+    
+    # Create settlements
     settlements = []
-    net_balances = {}
-    member_names = {member.UserID: name for member, name in members}
+    due_date = datetime.utcnow() + timedelta(days=7)  # Default due date is a week from now
 
-    # Initialize net balances for all members
-    for member, _ in members:
-        # What they paid minus what they should have paid
-        net_balances[member.UserID] = total_paid.get(member.UserID, Decimal('0')) - share_per_person
-        print(f"Initial balance for {member_names[member.UserID]}: {net_balances[member.UserID]}")
-
-    # Get existing confirmed settlements to avoid duplicates
-    existing_confirmed_settlements = db.query(models.Settlement)\
-        .filter(
-            models.Settlement.GroupID == group_id,
-            models.Settlement.Status == "Confirmed"  # Only get confirmed settlements
-        ).all()
+    # Get ALL existing settlements for this group to avoid duplicates and consider confirmed ones
+    existing_settlements = db.query(models.Settlement)\
+        .filter(models.Settlement.GroupID == group_id)\
+        .all()
     
-    # Track which users have already settled with each other
-    confirmed_pairs = set()
-    for s in existing_confirmed_settlements:
-        confirmed_pairs.add((s.PayerUserID, s.ReceiverUserID))
+    # Track existing settlement pairs (both pending and confirmed)
+    existing_pairs = {}
+    for settlement in existing_settlements:
+        pair_key = (settlement.PayerUserID, settlement.ReceiverUserID)
+        if pair_key not in existing_pairs:
+            existing_pairs[pair_key] = []
+        existing_pairs[pair_key].append({
+            "status": settlement.Status,
+            "amount": settlement.Amount,
+            "settlement": settlement
+        })
     
-    print(f"Found {len(existing_confirmed_settlements)} confirmed settlements - will exclude these payment pairs")
+    # Track newly created settlements to avoid duplicates within this operation
+    new_settlement_pairs = set()
     
-    # Delete only pending settlements as we'll recalculate them
-    pending_settlements = db.query(models.Settlement)\
-        .filter(
-            models.Settlement.GroupID == group_id,
-            models.Settlement.Status == "Pending"  # Only delete pending settlements
-        ).all()
-    
-    for settlement in pending_settlements:
-        db.delete(settlement)
-    
-    # Commit the deletions
-    db.commit()
-
-    # Create new settlements for remaining non-zero balances
-    # This algorithm simplifies debts by creating the minimum number of transactions
-    while any(abs(bal) > Decimal('0.01') for bal in net_balances.values()):
-        # Find the person who owes the most money (most negative balance)
-        max_debtor = min(net_balances.items(), key=lambda x: x[1])
-        # Find the person who is owed the most money (most positive balance)
-        max_creditor = max(net_balances.items(), key=lambda x: x[1])
+    for debtor in debtors:
+        remaining_debt = abs(debtor.NetBalance)
         
-        # If both balances are very close to zero, we're done
-        if abs(max_debtor[1]) < Decimal('0.01') or abs(max_creditor[1]) < Decimal('0.01'):
-            break
-            
-        # The amount to settle is the minimum of what the debtor owes and what the creditor is owed
-        amount = min(abs(max_debtor[1]), abs(max_creditor[1]))
-        
-        # Skip if this payment pair already has a confirmed settlement
-        if (max_debtor[0], max_creditor[0]) in confirmed_pairs:
-            print(f"Skipping already confirmed settlement from {max_debtor[0]} to {max_creditor[0]}")
-            # Still need to update balances since we're skipping this settlement
-            net_balances[max_debtor[0]] += amount
-            net_balances[max_creditor[0]] -= amount
+        # Skip if no debt
+        if remaining_debt < 0.01:
             continue
             
-        if amount > Decimal('0'):
-            due_date = datetime.utcnow() + timedelta(days=7)
+        for creditor in creditors:
+            if remaining_debt < 0.01:
+                break
+                
+            # Skip if creditor has no credit left
+            if creditor.NetBalance < 0.01:
+                continue
+                
+            # Calculate how much can be settled
+            amount = min(remaining_debt, creditor.NetBalance)
             
-            # Create settlement
-            settlement = models.Settlement(
-                GroupID=group_id,
-                PayerUserID=max_debtor[0],  # The person who owes money
-                ReceiverUserID=max_creditor[0],  # The person who is owed money
-                Amount=amount,
-                Status='Pending',
-                DueDate=due_date,
-                PaymentDate=None
-            )
-            db.add(settlement)
-            db.flush()
-
-            # Create notification for the payer
-            notification = models.Notification(
-                UserID=max_debtor[0],
-                Message=f"You owe ${amount:.2f} to {member_names[max_creditor[0]]} based on group expenses. Due by {due_date.strftime('%Y-%m-%d')}",
-                Type="SETTLEMENT_DUE"
-            )
-            db.add(notification)
-
-            # Get group name
-            group_name = db.query(models.UserGroup.GroupName)\
-                .filter(models.UserGroup.GroupID == group_id)\
-                .scalar()
-
-            # Create a DetailedSettlement object for the response
-            detailed_settlement = schemas.DetailedSettlement(
-                SettlementID=settlement.SettlementID,
-                GroupID=group_id,
-                PayerUserID=max_debtor[0],
-                ReceiverUserID=max_creditor[0],
-                Amount=amount,
-                Status='Pending',
-                Date=datetime.utcnow(),
-                DueDate=due_date,
-                PaymentDate=None,
-                PayerName=member_names[max_debtor[0]],
-                ReceiverName=member_names[max_creditor[0]],
-                GroupName=group_name
-            )
-            settlements.append(detailed_settlement)
-
-            # Update balances - add to debtor's balance and subtract from creditor's balance
-            net_balances[max_debtor[0]] += amount
-            net_balances[max_creditor[0]] -= amount
+            if amount < 0.01:
+                continue
             
-            print(f"Created settlement: {member_names[max_debtor[0]]} pays {amount} to {member_names[max_creditor[0]]}")
-            print(f"Updated balance for {member_names[max_debtor[0]]}: {net_balances[max_debtor[0]]}")
-            print(f"Updated balance for {member_names[max_creditor[0]]}: {net_balances[max_creditor[0]]}")
+            pair_key = (debtor.UserID, creditor.UserID)
+            
+            # Skip if there's already a confirmed settlement between these users from this operation
+            if pair_key in new_settlement_pairs:
+                print(f"Skipping duplicate settlement: {debtor.UserID} -> {creditor.UserID}")
+                continue
+            
+            # Check for existing settlements between these users
+            existing_pair_settlements = existing_pairs.get(pair_key, [])
+            pending_settlement = None
+            
+            # Find if there's a pending settlement we could update
+            for settlement_info in existing_pair_settlements:
+                if settlement_info["status"] == "Pending":
+                    pending_settlement = settlement_info["settlement"]
+                    break
+            
+            # Create or update settlement
+            settlement_data = {
+                "GroupID": group_id,
+                "PayerUserID": debtor.UserID,
+                "ReceiverUserID": creditor.UserID,
+                "Amount": amount,
+                "DueDate": due_date,
+                "Status": "Pending",
+                "PayerName": debtor.Name,
+                "ReceiverName": creditor.Name,
+                "GroupName": group_name  # Add the required GroupName field
+            }
+            
+            if force_create:
+                if pending_settlement:
+                    # Update existing pending settlement
+                    pending_settlement.Amount = amount
+                    pending_settlement.DueDate = due_date
+                    db.commit()
+                    db.refresh(pending_settlement)
+                    
+                    settlement_data["SettlementID"] = pending_settlement.SettlementID
+                    settlement_data["Date"] = pending_settlement.Date
+                else:
+                    # Create new settlement in database
+                    db_settlement = models.Settlement(
+                        GroupID=group_id,
+                        PayerUserID=debtor.UserID,
+                        ReceiverUserID=creditor.UserID,
+                        Amount=amount,
+                        DueDate=due_date,
+                        Status="Pending"
+                    )
+                    db.add(db_settlement)
+                    db.commit()
+                    db.refresh(db_settlement)
+                    
+                    settlement_data["SettlementID"] = db_settlement.SettlementID
+                    settlement_data["Date"] = db_settlement.Date
+                
+                # Remember this pair to avoid duplicates
+                new_settlement_pairs.add(pair_key)
+                
+            # Add to list of settlements to return
+            settlements.append(schemas.DetailedSettlement(**settlement_data))
+            
+            # Update remaining amounts for next iterations
+            remaining_debt -= amount
+            creditor.NetBalance -= amount
     
-    db.commit()
+    # If include_all flag is true, also include existing settlements
+    if include_all:
+        for settlement in existing_settlements:
+            # Only include if we don't already have this settlement in our results
+            skip = False
+            for s in settlements:
+                if (hasattr(s, 'SettlementID') and s.SettlementID == settlement.SettlementID):
+                    skip = True
+                    break
+            
+            if skip:
+                continue
+                
+            # Get user names
+            payer = db.query(models.User).filter(models.User.UserID == settlement.PayerUserID).first()
+            receiver = db.query(models.User).filter(models.User.UserID == settlement.ReceiverUserID).first()
+            
+            settlement_data = {
+                "SettlementID": settlement.SettlementID,
+                "GroupID": settlement.GroupID,
+                "PayerUserID": settlement.PayerUserID,
+                "ReceiverUserID": settlement.ReceiverUserID,
+                "Amount": settlement.Amount,
+                "Date": settlement.Date,
+                "DueDate": settlement.DueDate,
+                "Status": settlement.Status,
+                "PaymentMethod": settlement.PaymentMethod,
+                "PaymentDate": settlement.PaymentDate,
+                "PayerName": payer.Name if payer else "Unknown",
+                "ReceiverName": receiver.Name if receiver else "Unknown",
+                "GroupName": group_name  # Add the required GroupName field
+            }
+            
+            settlements.append(schemas.DetailedSettlement(**settlement_data))
+    
     return settlements
 
 @app.post("/settlements/{settlement_id}/process-payment")
