@@ -49,8 +49,67 @@ def create_database():
         print(f"Error creating database: {e}")
         raise
 
+# Fix missing columns in tables that already exist
+def fix_database_schema():
+    try:
+        # Create a connection to the database
+        connection = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
+        )
+        
+        cursor = connection.cursor()
+        
+        # Check if SettlementPeriods table needs updating
+        cursor.execute("SHOW COLUMNS FROM SettlementPeriods LIKE 'TotalPendingAmount'")
+        if not cursor.fetchone():
+            print("Adding missing columns to SettlementPeriods table...")
+            cursor.execute("ALTER TABLE SettlementPeriods ADD COLUMN TotalPendingAmount DECIMAL(10,2) DEFAULT 0")
+            cursor.execute("ALTER TABLE SettlementPeriods ADD COLUMN LastBatchID VARCHAR(36)")
+            print("Added missing columns to SettlementPeriods table")
+            
+        # Check if Settlements table needs updating
+        cursor.execute("SHOW COLUMNS FROM Settlements LIKE 'DueDate'")
+        if not cursor.fetchone():
+            print("Adding missing columns to Settlements table...")
+            cursor.execute("ALTER TABLE Settlements ADD COLUMN DueDate DATETIME")
+            cursor.execute("ALTER TABLE Settlements ADD COLUMN PaymentDate DATETIME")
+            print("Added missing columns to Settlements table")
+
+        # Check if Notifications table exists
+        cursor.execute("SHOW TABLES LIKE 'Notifications'")
+        if not cursor.fetchone():
+            print("Creating Notifications table...")
+            cursor.execute("""
+            CREATE TABLE Notifications (
+                NotificationID INT AUTO_INCREMENT PRIMARY KEY,
+                UserID INT NOT NULL,
+                Message TEXT NOT NULL,
+                Type VARCHAR(50) NOT NULL,
+                IsRead BOOLEAN NOT NULL DEFAULT FALSE,
+                CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+            )
+            """)
+            print("Created Notifications table")
+
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        print("Database schema fixes applied successfully.")
+        
+    except Exception as e:
+        print(f"Error fixing database schema: {e}")
+
+
 # Create the database before establishing the SQLAlchemy connection
 create_database()
+
+# Apply any needed fixes to the database schema
+fix_database_schema()
 
 # Now create the SQLAlchemy connection URL with the database
 SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}/{DB_NAME}"
