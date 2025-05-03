@@ -1,15 +1,52 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 import urllib.parse
+import pymysql
 
 load_dotenv()
 
+# Get database configuration from environment variables
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_HOST = os.getenv('DB_HOST')
+DB_NAME = os.getenv('DB_NAME', 'RoomiePayDB')
+
 # URL encode the password to properly handle special characters like @
-password = urllib.parse.quote_plus(os.getenv('DB_PASSWORD', ''))
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{os.getenv('DB_USER')}:{password}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
+encoded_password = urllib.parse.quote_plus(DB_PASSWORD)
+
+# Create database if it doesn't exist
+def create_database():
+    try:
+        # Create a connection without specifying a database
+        connection = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD
+        )
+        
+        cursor = connection.cursor()
+        
+        # Create database if it doesn't exist
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        print(f"Database '{DB_NAME}' created successfully or already exists.")
+        
+    except Exception as e:
+        print(f"Error creating database: {e}")
+        raise
+
+# Create the database before establishing the SQLAlchemy connection
+create_database()
+
+# Now create the SQLAlchemy connection URL with the database
+SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}/{DB_NAME}"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
