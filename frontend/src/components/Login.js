@@ -11,10 +11,20 @@ const Login = () => {
         e.preventDefault();
         try {
             const response = await login(email, password);
-            localStorage.setItem('token', response.data.access_token);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
+            const { access_token, user } = response.data;
+            
+            // Store complete user data
+            localStorage.setItem('token', access_token);
+            localStorage.setItem('user', JSON.stringify({
+                UserID: user.UserID,
+                Name: user.Name,
+                Email: user.Email
+            }));
+            
+            console.log('Logged in as:', user.Name, '(ID:', user.UserID, ')');
             navigate('/dashboard');
         } catch (error) {
+            console.error('Login error:', error);
             alert('Login failed. Please check your credentials.');
         }
     };

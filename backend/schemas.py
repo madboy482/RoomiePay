@@ -42,7 +42,7 @@ class ExpenseCreate(BaseModel):
     GroupID: int
     Amount: Decimal
     Description: str
-    PaidByUserID: int
+    PaidByUserID: Optional[int] = None  # Make PaidByUserID optional
 
 class ExpenseSplit(ExpenseCreate):
     SplitType: str = "EQUAL"
