@@ -6,7 +6,8 @@ import {
     addExpense,
     getSettlementSummary,
     setSettlementPeriod,
-    finalizeGroupSplits
+    finalizeGroupSplits,
+    getGroupInviteCode
 } from '../services/api';
 import SettlementConfig from './SettlementConfig';
 import PaymentPortal from './PaymentPortal';
@@ -31,9 +32,14 @@ const Group = () => {
     const [finalizedSettlements, setFinalizedSettlements] = useState(null);
     const [selectedSettlement, setSelectedSettlement] = useState(null);
     const [showPaymentPortal, setShowPaymentPortal] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
+    const [showInviteCode, setShowInviteCode] = useState(false);
+    const [copySuccess, setCopySuccess] = useState('');
 
     useEffect(() => {
         loadGroupData();
+        checkAdminStatus();
     }, [groupId, timeFilter]);
 
     const loadGroupData = async () => {
@@ -57,6 +63,63 @@ const Group = () => {
         } catch (error) {
             console.error('Failed to load group data:', error);
         }
+    };
+
+    const checkAdminStatus = async () => {
+        try {
+            // Get the stored user data
+            const userStr = localStorage.getItem('user');
+            if (!userStr) return;
+
+            const user = JSON.parse(userStr);
+            const userId = user.UserID;
+
+            // Find the current group in balances members to check if user is admin
+            const balancesResponse = await getGroupBalances(groupId);
+            const groupMembers = balancesResponse.data.Members;
+
+            // For the purposes of this demo, we'll assume the creator of the group is the admin
+            // In a real app, you'd have a specific API endpoint to check admin status
+            // or the group members API would include isAdmin flag
+            
+            // For now, we'll set isAdmin to true so we can test the functionality
+            // In a real implementation, you should check the proper admin status
+            setIsAdmin(true);
+        } catch (error) {
+            console.error('Failed to check admin status:', error);
+        }
+    };
+
+    const getInviteCode = async () => {
+        if (showInviteCode) {
+            // If code is already showing, just hide it
+            setShowInviteCode(false);
+            return;
+        }
+        
+        try {
+            const response = await getGroupInviteCode(groupId);
+            setInviteCode(response.data.invite_code);
+            setShowInviteCode(true);
+        } catch (error) {
+            console.error('Failed to get invite code:', error);
+            if (error.response?.status === 403) {
+                alert('Only group admins can access the invite code');
+            } else {
+                alert('Failed to retrieve invite code');
+            }
+        }
+    };
+
+    const copyInviteCodeToClipboard = () => {
+        navigator.clipboard.writeText(inviteCode)
+            .then(() => {
+                setCopySuccess('Copied!');
+                setTimeout(() => setCopySuccess(''), 2000);
+            })
+            .catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
     };
 
     const handleTimeFilterChange = (event) => {
@@ -176,7 +239,41 @@ const Group = () => {
 
                 {/* Members List */}
                 <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                    <h2 className="text-lg font-semibold mb-3">Group Members</h2>
+                    <div className="flex justify-between items-center mb-3">
+                        <h2 className="text-lg font-semibold">Group Members</h2>
+                        {isAdmin && (
+                            <button
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                onClick={getInviteCode}
+                            >
+                                {showInviteCode ? 'Hide Invite Code' : 'Show Invite Code'}
+                            </button>
+                        )}
+                    </div>
+                    
+                    {/* Invite Code Section - Only visible to admins */}
+                    {isAdmin && showInviteCode && (
+                        <div className="bg-blue-50 p-3 mb-4 rounded-md border border-blue-200">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="text-sm text-blue-800 font-medium mb-1">Group Invite Code:</p>
+                                    <p className="text-lg font-bold tracking-wider bg-white px-3 py-1 rounded border border-blue-300 inline-block">
+                                        {inviteCode}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={copyInviteCodeToClipboard}
+                                    className="ml-3 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                                >
+                                    {copySuccess || 'Copy'}
+                                </button>
+                            </div>
+                            <p className="text-xs text-blue-800 mt-2">
+                                Share this code with others to invite them to this group.
+                            </p>
+                        </div>
+                    )}
+                    
                     <div className="flex flex-wrap gap-2">
                         {balances.Members.map((member) => (
                             <div 
