@@ -189,52 +189,153 @@ const Group = () => {
                     {balances.Members.map((member) => (
                         <li key={member.UserID} className="py-3">
                             <div>
-                                <p className="font-medium">{member.Name}</p>
-                                <div className="text-sm text-gray-700">
-                                    Net Balance: ${Number(member.NetBalance).toFixed(2)}
-                                    {Number(member.OwesAmount) > 0 && (
-                                        <span className="ml-2 text-red-600">
-                                            Owes: ${Number(member.OwesAmount).toFixed(2)}
+                                <p className="font-medium text-lg mb-1">{member.Name}</p>
+                                <div className="space-y-1">
+                                    <p className="text-sm text-gray-600">
+                                        Net Balance: <span className={member.NetBalance > 0 ? "text-green-600" : member.NetBalance < 0 ? "text-red-600" : "text-gray-600"}>
+                                            ${Number(member.NetBalance).toFixed(2)}
                                         </span>
+                                    </p>
+                                    {Number(member.OwesAmount) > 0 && (
+                                        <div className="text-sm">
+                                            <p className="text-red-600 font-medium">
+                                                Needs to pay: ${Number(member.OwesAmount).toFixed(2)}
+                                            </p>
+                                            <p className="text-gray-500 text-xs mt-1">
+                                                Your share of the total expenses
+                                            </p>
+                                        </div>
                                     )}
                                     {Number(member.IsOwedAmount) > 0 && (
-                                        <span className="ml-2 text-green-600">
-                                            Is Owed: ${Number(member.IsOwedAmount).toFixed(2)}
-                                        </span>
+                                        <div className="text-sm">
+                                            <p className="text-green-600 font-medium">
+                                                Will receive: ${Number(member.IsOwedAmount).toFixed(2)}
+                                            </p>
+                                            <p className="text-gray-500 text-xs mt-1">
+                                                Total amount you paid for the group
+                                            </p>
+                                        </div>
                                     )}
+                                    <div className="text-xs text-gray-500 mt-2">
+                                        Each person's equal share: ${(Number(settlementSummary?.TotalAmount || 0) / balances.Members.length).toFixed(2)}
+                                    </div>
                                 </div>
                             </div>
                         </li>
                     ))}
                 </ul>
+                <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm text-gray-600">
+                        <span className="font-medium">Total Group Expenses:</span> ${settlementSummary?.TotalAmount || '0.00'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Split equally among {balances.Members.length} members
+                    </p>
+                </div>
             </div>
 
             {/* Expenses List */}
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                <h2 className="text-lg font-semibold mb-2">Recent Expenses</h2>
-                <ul className="divide-y divide-gray-200">
-                    {expenses.map((expense) => (
-                        <li key={expense.ExpenseID} className="py-3">
-                            <div>
-                                <p>
-                                    {expense.Description} - 
-                                    <span className="font-bold"> ${expense.Amount.toFixed(2)}</span>
+                <h2 className="text-lg font-semibold mb-4">Expense Transactions</h2>
+                
+                {/* Spending Summary */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 className="text-md font-semibold mb-3">Spending Summary</h3>
+                    {Object.entries(expenses.reduce((acc, expense) => {
+                        // Group by description (category)
+                        const category = expense.Description.toLowerCase();
+                        if (!acc[category]) {
+                            acc[category] = {
+                                total: 0,
+                                count: 0,
+                                transactions: []
+                            };
+                        }
+                        acc[category].total += Number(expense.Amount);
+                        acc[category].count += 1;
+                        acc[category].transactions.push(expense);
+                        return acc;
+                    }, {})).map(([category, data]) => (
+                        <div key={category} className="mb-3 pb-3 border-b border-gray-200 last:border-0">
+                            <div className="flex justify-between items-center mb-1">
+                                <p className="font-medium capitalize">{category}</p>
+                                <p className="text-sm text-gray-600">
+                                    {data.count} transaction{data.count !== 1 ? 's' : ''}
                                 </p>
-                                <div className="text-sm text-gray-700 mt-1">
-                                    <p className="text-gray-900">
-                                        Paid by: {expense.PaidByUser.Name}
-                                    </p>
-                                    <p>
-                                        Date: {new Date(expense.Date).toLocaleString()}
-                                    </p>
-                                    <p>
-                                        Status: {expense.IsSettled ? 'Settled' : 'Pending Settlement'}
+                            </div>
+                            <p className="text-lg font-bold text-blue-600">
+                                ${Number(data.total).toFixed(2)}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Per Person Summary */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 className="text-md font-semibold mb-3">Per Person Spending</h3>
+                    {Object.entries(expenses.reduce((acc, expense) => {
+                        const payer = expense.PaidByUser.Name;
+                        if (!acc[payer]) {
+                            acc[payer] = {
+                                total: 0,
+                                transactions: []
+                            };
+                        }
+                        acc[payer].total += Number(expense.Amount);
+                        acc[payer].transactions.push(expense);
+                        return acc;
+                    }, {})).map(([payer, data]) => (
+                        <div key={payer} className="mb-3 pb-3 border-b border-gray-200 last:border-0">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-medium">{payer}</p>
+                                    <p className="text-sm text-gray-600">
+                                        {data.transactions.length} transaction{data.transactions.length !== 1 ? 's' : ''}
                                     </p>
                                 </div>
+                                <p className="text-lg font-bold text-green-600">
+                                    ${Number(data.total).toFixed(2)}
+                                </p>
                             </div>
-                        </li>
+                        </div>
                     ))}
-                </ul>
+                </div>
+
+                {/* Detailed Transaction List */}
+                <div>
+                    <h3 className="text-md font-semibold mb-3">All Transactions</h3>
+                    <ul className="divide-y divide-gray-200">
+                        {expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date)).map((expense) => (
+                            <li key={expense.ExpenseID} className="py-4">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-medium text-lg">
+                                            {expense.Description}
+                                        </p>
+                                        <div className="text-sm text-gray-600 space-y-1 mt-1">
+                                            <p>
+                                                Paid by: <span className="font-medium">{expense.PaidByUser.Name}</span>
+                                            </p>
+                                            <p>
+                                                Date: {new Date(expense.Date).toLocaleString()}
+                                            </p>
+                                            <p>
+                                                Status: <span className={expense.IsSettled ? "text-green-600" : "text-yellow-600"}>
+                                                    {expense.IsSettled ? 'Settled' : 'Pending Settlement'}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-lg font-bold text-gray-900">
+                                            ${Number(expense.Amount).toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             </div>
 
             {/* Add Expense Dialog */}
