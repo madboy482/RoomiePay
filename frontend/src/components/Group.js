@@ -603,13 +603,23 @@ const Group = () => {
                                                         <p>Due: {new Date(settlement.DueDate).toLocaleDateString()}</p>
                                                     </div>
                                                 </div>
-                                                <span className={`px-2 py-1 text-sm rounded-full ${
-                                                    settlement.Status === 'Pending' 
-                                                        ? 'bg-yellow-100 text-yellow-800' 
-                                                        : 'bg-green-100 text-green-800'
-                                                }`}>
-                                                    {settlement.Status}
-                                                </span>
+                                                <div className="flex flex-col items-end">
+                                                    <span className={`px-2 py-1 text-sm rounded-full mb-2 ${
+                                                        settlement.Status === 'Pending' 
+                                                            ? 'bg-yellow-100 text-yellow-800' 
+                                                            : 'bg-green-100 text-green-800'
+                                                    }`}>
+                                                        {settlement.Status}
+                                                    </span>
+                                                    {settlement.Status === 'Pending' && (
+                                                        <button
+                                                            onClick={() => handlePayNow(settlement)}
+                                                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm rounded"
+                                                        >
+                                                            Pay Now
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
