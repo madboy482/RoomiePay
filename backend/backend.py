@@ -724,9 +724,9 @@ async def set_settlement_period(
         # Calculate next settlement time
         now = datetime.utcnow()
         if period.endswith('h'):
-            next_settlement = now + timedelta(hours=int(period[:-1]))
+            next_settlement = now + timedelta(hours(int(period[:-1])))
         elif period.endswith('d'):
-            next_settlement = now + timedelta(days=int(period[:-1]))
+            next_settlement = now + timedelta(days(int(period[:-1])))
         elif period.endswith('w'):
             next_settlement = now + timedelta(weeks=int(period[:-1]))
         elif period.endswith('m'):
@@ -800,13 +800,15 @@ async def finalize_group_splits(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
 
-    # Get ALL expenses for the group, regardless of settlement status
+    # Get only UNSETTLED expenses for the group
     expenses = db.query(models.Expense)\
-        .filter(models.Expense.GroupID == group_id)\
-        .all()
+        .filter(
+            models.Expense.GroupID == group_id,
+            models.Expense.IsSettled == False
+        ).all()
 
     if not expenses:
-        raise HTTPException(status_code=404, detail="No expenses found in this group")
+        raise HTTPException(status_code=404, detail="No unsettled expenses found in this group")
 
     # Get all members
     members = db.query(models.GroupMember)\
@@ -815,7 +817,7 @@ async def finalize_group_splits(
         .filter(models.GroupMember.GroupID == group_id)\
         .all()
 
-    # Calculate total paid by each person for ALL expenses
+    # Calculate total paid by each person for UNSETTLED expenses only
     total_paid = {}
     for expense in expenses:
         if expense.PaidByUserID not in total_paid:
@@ -833,36 +835,47 @@ async def finalize_group_splits(
 
     # Initialize net balances for all members
     for member, _ in members:
+        # What they paid minus what they should have paid
         net_balances[member.UserID] = total_paid.get(member.UserID, Decimal('0')) - share_per_person
+        print(f"Initial balance for {member_names[member.UserID]}: {net_balances[member.UserID]}")
 
-    # Get existing settlements to subtract from balances
+    # Get existing pending settlements and adjust balances
     existing_settlements = db.query(models.Settlement)\
         .filter(
             models.Settlement.GroupID == group_id,
-            models.Settlement.Status == "Confirmed"  # Only consider confirmed settlements
+            models.Settlement.Status == "Pending"  # Consider only pending settlements
         ).all()
 
-    # Adjust net balances based on existing confirmed settlements
+    # Delete existing pending settlements as we'll recalculate them
     for settlement in existing_settlements:
-        net_balances[settlement.PayerUserID] += settlement.Amount  # Payer has paid this much
-        net_balances[settlement.ReceiverUserID] -= settlement.Amount  # Receiver has received this much
+        db.delete(settlement)
+    
+    # Commit the deletions
+    db.commit()
 
     # Create new settlements for remaining non-zero balances
+    # This algorithm simplifies debts by creating the minimum number of transactions
     while any(abs(bal) > Decimal('0.01') for bal in net_balances.values()):
-        # Find biggest debtor and creditor
-        max_debtor = max(net_balances.items(), key=lambda x: x[1] if x[1] < 0 else -Decimal('inf'))
-        max_creditor = max(net_balances.items(), key=lambda x: x[1] if x[1] > 0 else -Decimal('inf'))
-
-        amount = min(abs(max_debtor[1]), max_creditor[1])
-
+        # Find the person who owes the most money (most negative balance)
+        max_debtor = min(net_balances.items(), key=lambda x: x[1])
+        # Find the person who is owed the most money (most positive balance)
+        max_creditor = max(net_balances.items(), key=lambda x: x[1])
+        
+        # If both balances are very close to zero, we're done
+        if abs(max_debtor[1]) < Decimal('0.01') or abs(max_creditor[1]) < Decimal('0.01'):
+            break
+            
+        # The amount to settle is the minimum of what the debtor owes and what the creditor is owed
+        amount = min(abs(max_debtor[1]), abs(max_creditor[1]))
+        
         if amount > Decimal('0'):
             due_date = datetime.utcnow() + timedelta(days=7)
             
             # Create settlement
             settlement = models.Settlement(
                 GroupID=group_id,
-                PayerUserID=max_debtor[0],
-                ReceiverUserID=max_creditor[0],
+                PayerUserID=max_debtor[0],  # The person who owes money
+                ReceiverUserID=max_creditor[0],  # The person who is owed money
                 Amount=amount,
                 Status='Pending',
                 DueDate=due_date,
@@ -874,7 +887,7 @@ async def finalize_group_splits(
             # Create notification for the payer
             notification = models.Notification(
                 UserID=max_debtor[0],
-                Message=f"You owe ${amount:.2f} to {member_names[max_creditor[0]]} based on total group expenses. Due by {due_date.strftime('%Y-%m-%d')}",
+                Message=f"You owe ${amount:.2f} to {member_names[max_creditor[0]]} based on group expenses. Due by {due_date.strftime('%Y-%m-%d')}",
                 Type="SETTLEMENT_DUE"
             )
             db.add(notification)
@@ -901,10 +914,17 @@ async def finalize_group_splits(
             )
             settlements.append(detailed_settlement)
 
-            # Update balances
+            # Update balances - add to debtor's balance and subtract from creditor's balance
             net_balances[max_debtor[0]] += amount
             net_balances[max_creditor[0]] -= amount
+            
+            print(f"Settlement: {member_names[max_debtor[0]]} pays {amount} to {member_names[max_creditor[0]]}")
+            print(f"Updated balance for {member_names[max_debtor[0]]}: {net_balances[max_debtor[0]]}")
+            print(f"Updated balance for {member_names[max_creditor[0]]}: {net_balances[max_creditor[0]]}")
 
+    # REMOVED: No longer marking expenses as settled
+    # We want to keep the balances visible in the UI
+    
     db.commit()
     return settlements
 
@@ -1017,7 +1037,7 @@ async def check_settlements(background_tasks: BackgroundTasks):
                 
                 # Update next settlement time based on period
                 if period.Period.endswith('h'):
-                    period.NextSettlement = now + timedelta(hours=int(period.Period[:-1]))
+                    period.NextSettlement = now + timedelta(hours(int(period.Period[:-1])))
                 elif period.Period.endswith('d'):
                     period.NextSettlement = now + timedelta(days=int(period.Period[:-1]))
                 elif period.Period.endswith('w'):
@@ -1038,6 +1058,31 @@ async def check_settlements(background_tasks: BackgroundTasks):
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(check_settlements(BackgroundTasks()))
+
+@app.get("/groups/{group_id}/invite-code")
+async def get_group_invite_code(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Verify user is admin in group
+    member = db.query(models.GroupMember)\
+        .filter(
+            models.GroupMember.GroupID == group_id,
+            models.GroupMember.UserID == current_user.UserID,
+            models.GroupMember.IsAdmin == True
+        ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Must be group admin to retrieve invite code")
+    
+    # Get the group
+    group = db.query(models.UserGroup)\
+        .filter(models.UserGroup.GroupID == group_id)\
+        .first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    return {"invite_code": group.InviteCode}
 
 if __name__ == "__main__":
     import uvicorn
