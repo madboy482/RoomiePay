@@ -21,6 +21,4 @@ ENV/
 .vscode/
 *.swp
 *.swo
-
-# Log files
 *.log
