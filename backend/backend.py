@@ -726,7 +726,7 @@ async def set_settlement_period(
         if period.endswith('h'):
             next_settlement = now + timedelta(hours=int(period[:-1]))
         elif period.endswith('d'):
-            next_settlement = now + timedelta(days=int(period[:-1]))
+            next_settlement = now + timedelta(days(int(period[:-1])))
         elif period.endswith('w'):
             next_settlement = now + timedelta(weeks=int(period[:-1]))
         elif period.endswith('m'):
@@ -1017,7 +1017,7 @@ async def check_settlements(background_tasks: BackgroundTasks):
                 
                 # Update next settlement time based on period
                 if period.Period.endswith('h'):
-                    period.NextSettlement = now + timedelta(hours=int(period.Period[:-1]))
+                    period.NextSettlement = now + timedelta(hours(int(period.Period[:-1])))
                 elif period.Period.endswith('d'):
                     period.NextSettlement = now + timedelta(days=int(period.Period[:-1]))
                 elif period.Period.endswith('w'):
@@ -1038,6 +1038,31 @@ async def check_settlements(background_tasks: BackgroundTasks):
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(check_settlements(BackgroundTasks()))
+
+@app.get("/groups/{group_id}/invite-code")
+async def get_group_invite_code(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Verify user is admin in group
+    member = db.query(models.GroupMember)\
+        .filter(
+            models.GroupMember.GroupID == group_id,
+            models.GroupMember.UserID == current_user.UserID,
+            models.GroupMember.IsAdmin == True
+        ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Must be group admin to retrieve invite code")
+    
+    # Get the group
+    group = db.query(models.UserGroup)\
+        .filter(models.UserGroup.GroupID == group_id)\
+        .first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    return {"invite_code": group.InviteCode}
 
 if __name__ == "__main__":
     import uvicorn
