@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Paper, Grid, Dialog, TextField, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { getGroups, createGroup, joinGroup } from '../services/api';
 
@@ -59,142 +58,175 @@ const Dashboard = () => {
     };
 
     return (
-        <Box p={3}>
-            <Typography variant="h4" gutterBottom>
+        <div className="p-6">
+            <h1 className="text-2xl font-bold mb-4">
                 My Groups
-            </Typography>
+            </h1>
             
-            <Box mb={3}>
-                <Button variant="contained" onClick={() => setOpenCreate(true)} sx={{ mr: 1 }}>
+            <div className="mb-6">
+                <button 
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded mr-2"
+                    onClick={() => setOpenCreate(true)}
+                >
                     Create Group
-                </Button>
-                <Button variant="outlined" onClick={() => setOpenJoin(true)}>
+                </button>
+                <button 
+                    className="border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-2 px-4 rounded"
+                    onClick={() => setOpenJoin(true)}
+                >
                     Join Group
-                </Button>
-            </Box>
+                </button>
+            </div>
 
             {error && (
-                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
-                    {error}
-                </Alert>
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span className="block sm:inline">{error}</span>
+                    <span 
+                        className="absolute top-0 right-0 px-4 py-3"
+                        onClick={() => setError('')}
+                    >
+                        <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <title>Close</title>
+                            <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+                        </svg>
+                    </span>
+                </div>
             )}
 
-            <Grid container spacing={2}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {groups.map((group) => (
-                    <Grid item xs={12} sm={6} md={4} key={group.GroupID}>
-                        <Paper
-                            elevation={3}
-                            sx={{ p: 2, cursor: 'pointer' }}
-                            onClick={() => handleGroupClick(group.GroupID)}
-                        >
-                            <Typography variant="h6">{group.GroupName}</Typography>
-                            <Typography variant="body2" color="textSecondary">
-                                {group.Description}
-                            </Typography>
-                        </Paper>
-                    </Grid>
+                    <div 
+                        key={group.GroupID}
+                        className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-shadow"
+                        onClick={() => handleGroupClick(group.GroupID)}
+                    >
+                        <h2 className="text-lg font-semibold">{group.GroupName}</h2>
+                        <p className="text-gray-600 text-sm">
+                            {group.Description}
+                        </p>
+                    </div>
                 ))}
-            </Grid>
+            </div>
 
             {/* Create Group Dialog */}
-            <Dialog open={openCreate} onClose={() => {
-                setOpenCreate(false);
-                setShowInviteCode(false);
-                setError('');
-            }}>
-                <Box p={3} width={300}>
-                    {!showInviteCode ? (
-                        <>
-                            <Typography variant="h6" gutterBottom>Create New Group</Typography>
-                            <form onSubmit={handleCreateGroup}>
-                                <TextField
-                                    fullWidth
-                                    margin="normal"
-                                    label="Group Name"
-                                    value={groupForm.GroupName}
-                                    onChange={(e) => setGroupForm({ ...groupForm, GroupName: e.target.value })}
-                                    required
-                                />
-                                <TextField
-                                    fullWidth
-                                    margin="normal"
-                                    label="Description"
-                                    value={groupForm.Description}
-                                    onChange={(e) => setGroupForm({ ...groupForm, Description: e.target.value })}
-                                    multiline
-                                    rows={3}
-                                />
-                                <Button type="submit" fullWidth variant="contained" sx={{ mt: 2 }}>
-                                    Create
-                                </Button>
-                            </form>
-                        </>
-                    ) : (
-                        <Box>
-                            <Typography variant="h6" gutterBottom>Group Created!</Typography>
-                            <Typography variant="body1" gutterBottom>
-                                Share this invite code with others:
-                            </Typography>
-                            <Paper 
-                                elevation={2} 
-                                sx={{ 
-                                    p: 2, 
-                                    my: 2, 
-                                    backgroundColor: '#f5f5f5',
-                                    textAlign: 'center',
-                                    fontSize: '1.2em',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                {newGroupInviteCode}
-                            </Paper>
-                            <Button 
-                                fullWidth 
-                                variant="contained" 
-                                onClick={() => {
-                                    setOpenCreate(false);
-                                    setShowInviteCode(false);
-                                }}
-                            >
-                                Close
-                            </Button>
-                        </Box>
-                    )}
-                </Box>
-            </Dialog>
+            {openCreate && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        {!showInviteCode ? (
+                            <>
+                                <h2 className="text-xl font-semibold mb-4">Create New Group</h2>
+                                <form onSubmit={handleCreateGroup}>
+                                    <div className="mb-4">
+                                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="groupName">
+                                            Group Name
+                                        </label>
+                                        <input
+                                            id="groupName"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            type="text"
+                                            value={groupForm.GroupName}
+                                            onChange={(e) => setGroupForm({ ...groupForm, GroupName: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-4">
+                                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="description">
+                                            Description
+                                        </label>
+                                        <textarea
+                                            id="description"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            rows="3"
+                                            value={groupForm.Description}
+                                            onChange={(e) => setGroupForm({ ...groupForm, Description: e.target.value })}
+                                        />
+                                    </div>
+                                    <button 
+                                        type="submit" 
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md mt-4"
+                                    >
+                                        Create
+                                    </button>
+                                </form>
+                                <button 
+                                    onClick={() => {
+                                        setOpenCreate(false);
+                                        setError('');
+                                    }}
+                                    className="mt-4 text-gray-500 hover:text-gray-700 text-sm"
+                                >
+                                    Cancel
+                                </button>
+                            </>
+                        ) : (
+                            <div>
+                                <h2 className="text-xl font-semibold mb-4">Group Created!</h2>
+                                <p className="mb-2">
+                                    Share this invite code with others:
+                                </p>
+                                <div className="bg-gray-100 p-4 my-4 text-center text-lg font-bold rounded">
+                                    {newGroupInviteCode}
+                                </div>
+                                <button 
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
+                                    onClick={() => {
+                                        setOpenCreate(false);
+                                        setShowInviteCode(false);
+                                    }}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Join Group Dialog */}
-            <Dialog 
-                open={openJoin} 
-                onClose={() => {
-                    setOpenJoin(false);
-                    setInviteCode('');
-                    setError('');
-                }}
-            >
-                <Box p={3} width={300}>
-                    <Typography variant="h6" gutterBottom>Join Group</Typography>
-                    {error && (
-                        <Alert severity="error" sx={{ mb: 2 }}>
-                            {error}
-                        </Alert>
-                    )}
-                    <form onSubmit={handleJoinGroup}>
-                        <TextField
-                            fullWidth
-                            margin="normal"
-                            label="Invite Code"
-                            value={inviteCode}
-                            onChange={(e) => setInviteCode(e.target.value)}
-                            required
-                        />
-                        <Button type="submit" fullWidth variant="contained" sx={{ mt: 2 }}>
-                            Join
-                        </Button>
-                    </form>
-                </Box>
-            </Dialog>
-        </Box>
+            {openJoin && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h2 className="text-xl font-semibold mb-4">Join Group</h2>
+                        {error && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                                <span className="block sm:inline">{error}</span>
+                            </div>
+                        )}
+                        <form onSubmit={handleJoinGroup}>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="inviteCode">
+                                    Invite Code
+                                </label>
+                                <input
+                                    id="inviteCode"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    type="text"
+                                    value={inviteCode}
+                                    onChange={(e) => setInviteCode(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <button 
+                                type="submit" 
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md mt-4"
+                            >
+                                Join
+                            </button>
+                        </form>
+                        <button 
+                            onClick={() => {
+                                setOpenJoin(false);
+                                setInviteCode('');
+                                setError('');
+                            }}
+                            className="mt-4 text-gray-500 hover:text-gray-700 text-sm"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
