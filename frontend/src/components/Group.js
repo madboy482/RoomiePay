@@ -196,7 +196,31 @@ const Group = () => {
     const handleFinalizeSplits = async () => {
         try {
             const response = await finalizeGroupSplits(groupId);
-            setFinalizedSettlements(response.data);
+            
+            // Filter out any settlements that might be duplicates of already confirmed ones
+            let newSettlements = [];
+            
+            // If we already have some settlements stored
+            if (finalizedSettlements && finalizedSettlements.length > 0) {
+                // Get all existing confirmed settlements
+                const confirmedSettlements = finalizedSettlements.filter(s => s.Status === 'Confirmed');
+                
+                // Filter the new settlements to exclude those that match confirmed ones
+                newSettlements = response.data.filter(newS => {
+                    // Don't include settlements where the same payer already paid the same receiver
+                    return !confirmedSettlements.some(
+                        confirmedS => 
+                            (confirmedS.PayerUserID === newS.PayerUserID && 
+                             confirmedS.ReceiverUserID === newS.ReceiverUserID)
+                    );
+                });
+                
+                // Combine confirmed settlements with new ones
+                setFinalizedSettlements([...confirmedSettlements, ...newSettlements]);
+            } else {
+                setFinalizedSettlements(response.data);
+            }
+            
             setShowFinalizeDialog(true);
             loadGroupData(); // Refresh data after finalizing
         } catch (error) {
@@ -210,9 +234,33 @@ const Group = () => {
         setShowPaymentPortal(true);
     };
 
-    const handlePaymentComplete = () => {
+    const handlePaymentComplete = async (settlementId, success) => {
+        if (success) {
+            console.log('Payment successful for settlement:', settlementId);
+            
+            // Update the local settlement state to reflect payment
+            if (finalizedSettlements) {
+                const updatedSettlements = finalizedSettlements.map(s => 
+                    s.SettlementID === settlementId 
+                        ? {...s, Status: 'Confirmed', PaymentDate: new Date().toISOString()} 
+                        : s
+                );
+                setFinalizedSettlements(updatedSettlements);
+            }
+            
+            // Reload all group data after a short delay to ensure the backend has processed everything
+            setTimeout(async () => {
+                try {
+                    await loadGroupData();
+                    console.log('Group data refreshed after payment');
+                } catch (error) {
+                    console.error('Failed to refresh group data:', error);
+                }
+            }, 500);
+        }
+        
+        setSelectedSettlement(null);
         setShowPaymentPortal(false);
-        loadGroupData(); // Refresh the data after payment
     };
 
     return (
@@ -361,41 +409,44 @@ const Group = () => {
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
                 <h2 className="text-lg font-semibold mb-4">Member Balances</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {balances.Members.map((member) => (
-                        <div 
-                            key={member.UserID} 
-                            className={`p-4 rounded-lg border ${
-                                member.NetBalance > 0 ? 'bg-green-50 border-green-200' : 
-                                member.NetBalance < 0 ? 'bg-red-50 border-red-200' : 
-                                'bg-gray-50 border-gray-200'
-                            }`}
-                        >
-                            <div className="flex justify-between items-start">
+                    {balances.Members.map((member) => {
+                        // Parse the values to ensure proper formatting
+                        const netBalance = Number(member.NetBalance).toFixed(2);
+                        const owesAmount = Number(member.OwesAmount).toFixed(2);
+                        const isOwedAmount = Number(member.IsOwedAmount).toFixed(2);
+                        
+                        // Determine the card background color
+                        const cardClass = 
+                            parseFloat(netBalance) > 0 ? 'bg-green-50 border-green-200' : 
+                            parseFloat(netBalance) < 0 ? 'bg-red-50 border-red-200' : 
+                            'bg-gray-50 border-gray-200';
+                            
+                        return (
+                            <div 
+                                key={member.UserID} 
+                                className={`p-4 rounded-lg border ${cardClass}`}
+                            >
                                 <div>
                                     <h3 className="font-medium text-lg">{member.Name}</h3>
-                                    <p className={`text-sm mt-1 ${
-                                        member.NetBalance > 0 ? 'text-green-600' : 
-                                        member.NetBalance < 0 ? 'text-red-600' : 
+                                    <p className={`text-sm mt-2 font-medium ${
+                                        parseFloat(netBalance) > 0 ? 'text-green-600' : 
+                                        parseFloat(netBalance) < 0 ? 'text-red-600' : 
                                         'text-gray-600'
                                     }`}>
-                                        Net Balance: ${Number(member.NetBalance).toFixed(2)}
+                                        Net Balance: ${netBalance}
+                                    </p>
+                                </div>
+                                <div className="mt-3 space-y-1 text-sm">
+                                    <p className={parseFloat(owesAmount) > 0 ? "text-red-600" : "text-gray-500"}>
+                                        Owes: ${owesAmount}
+                                    </p>
+                                    <p className={parseFloat(isOwedAmount) > 0 ? "text-green-600" : "text-gray-500"}>
+                                        Is Owed: ${isOwedAmount}
                                     </p>
                                 </div>
                             </div>
-                            <div className="mt-2 space-y-1 text-sm">
-                                {Number(member.OwesAmount) > 0 && (
-                                    <p className="text-red-600">
-                                        Owes: ${Number(member.OwesAmount).toFixed(2)}
-                                    </p>
-                                )}
-                                {Number(member.IsOwedAmount) > 0 && (
-                                    <p className="text-green-600">
-                                        Is Owed: ${Number(member.IsOwedAmount).toFixed(2)}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -611,7 +662,7 @@ const Group = () => {
                                                     }`}>
                                                         {settlement.Status}
                                                     </span>
-                                                    {settlement.Status === 'Pending' && (
+                                                    {settlement.Status === 'Pending' && settlement.PayerUserID === JSON.parse(localStorage.getItem('user')).UserID && (
                                                         <button
                                                             onClick={() => handlePayNow(settlement)}
                                                             className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm rounded"

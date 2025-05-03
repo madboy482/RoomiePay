@@ -370,7 +370,6 @@ async def get_group_balances(
         (models.GroupMember.UserID == models.Expense.PaidByUserID)
     ).filter(
         models.Expense.GroupID == group_id,
-        models.Expense.IsSettled == False,
         models.GroupMember.GroupID == group_id  # Additional check to ensure expenses are from group members
     ).group_by(models.Expense.PaidByUserID).all()
     
@@ -378,16 +377,68 @@ async def get_group_balances(
     total_expenses = sum((Decimal(str(amount)) for _, amount in paid_amounts), Decimal('0'))
     share_per_person = total_expenses / Decimal(str(len(members))) if members else Decimal('0')
     
-    # Update balances based on payments made
+    print(f"Total expenses: {total_expenses}, Share per person: {share_per_person}")
+    
+    # Initialize base balances - what they paid and their share
     for user_id, amount_paid in paid_amounts:
         amount_paid = Decimal(str(amount_paid))
         member_balances[user_id]["IsOwedAmount"] = amount_paid
         member_balances[user_id]["NetBalance"] = amount_paid - share_per_person
+        
+        print(f"User {user_id} paid {amount_paid}, balance: {member_balances[user_id]['NetBalance']}")
     
-    # Update balances based on what each person owes
+    # Make sure everyone who hasn't paid anything still has their share calculated
     for member_id in member_balances:
-        if member_balances[member_id]["NetBalance"] < 0:
-            member_balances[member_id]["OwesAmount"] = abs(member_balances[member_id]["NetBalance"])
+        if member_id not in [user_id for user_id, _ in paid_amounts]:
+            member_balances[member_id]["NetBalance"] = -share_per_person
+            print(f"User {member_id} paid nothing, balance: {member_balances[member_id]['NetBalance']}")
+    
+    # Update balances based on settlements (confirmed payments)
+    confirmed_settlements = db.query(models.Settlement)\
+        .filter(
+            models.Settlement.GroupID == group_id,
+            models.Settlement.Status == "Confirmed"
+        ).all()
+    
+    print(f"Found {len(confirmed_settlements)} confirmed settlements for group {group_id}")
+    
+    for settlement in confirmed_settlements:
+        payer_id = settlement.PayerUserID
+        receiver_id = settlement.ReceiverUserID
+        amount = Decimal(str(settlement.Amount))
+        
+        print(f"Settlement: {payer_id} paid {amount} to {receiver_id}")
+        
+        # Adjust balances for payer and receiver
+        if payer_id in member_balances:
+            member_balances[payer_id]["NetBalance"] += amount
+            print(f"After settlement, payer {payer_id} balance: {member_balances[payer_id]['NetBalance']}")
+            
+        if receiver_id in member_balances:
+            member_balances[receiver_id]["NetBalance"] -= amount
+            print(f"After settlement, receiver {receiver_id} balance: {member_balances[receiver_id]['NetBalance']}")
+    
+    # Now calculate OwesAmount and IsOwedAmount based on the final NetBalance
+    for member_id, balance_data in member_balances.items():
+        # Reset these values to recalculate them properly
+        balance_data["OwesAmount"] = Decimal("0")
+        balance_data["IsOwedAmount"] = Decimal("0")
+        
+        # If NetBalance is negative, they owe money
+        if balance_data["NetBalance"] < 0:
+            balance_data["OwesAmount"] = abs(balance_data["NetBalance"])
+        
+        # The IsOwedAmount should be what they paid (their contribution)
+        paid_amount = Decimal("0")
+        for user_id, amount in paid_amounts:
+            if user_id == member_id:
+                paid_amount = Decimal(str(amount))
+                break
+        
+        balance_data["IsOwedAmount"] = paid_amount
+        
+        print(f"Final for user {member_id}: Net={balance_data['NetBalance']}, " +
+              f"Owes={balance_data['OwesAmount']}, IsOwed={balance_data['IsOwedAmount']}")
     
     return schemas.GroupBalance(
         GroupID=group_id,
@@ -839,15 +890,28 @@ async def finalize_group_splits(
         net_balances[member.UserID] = total_paid.get(member.UserID, Decimal('0')) - share_per_person
         print(f"Initial balance for {member_names[member.UserID]}: {net_balances[member.UserID]}")
 
-    # Get existing pending settlements and adjust balances
-    existing_settlements = db.query(models.Settlement)\
+    # Get existing confirmed settlements to avoid duplicates
+    existing_confirmed_settlements = db.query(models.Settlement)\
         .filter(
             models.Settlement.GroupID == group_id,
-            models.Settlement.Status == "Pending"  # Consider only pending settlements
+            models.Settlement.Status == "Confirmed"  # Only get confirmed settlements
         ).all()
-
-    # Delete existing pending settlements as we'll recalculate them
-    for settlement in existing_settlements:
+    
+    # Track which users have already settled with each other
+    confirmed_pairs = set()
+    for s in existing_confirmed_settlements:
+        confirmed_pairs.add((s.PayerUserID, s.ReceiverUserID))
+    
+    print(f"Found {len(existing_confirmed_settlements)} confirmed settlements - will exclude these payment pairs")
+    
+    # Delete only pending settlements as we'll recalculate them
+    pending_settlements = db.query(models.Settlement)\
+        .filter(
+            models.Settlement.GroupID == group_id,
+            models.Settlement.Status == "Pending"  # Only delete pending settlements
+        ).all()
+    
+    for settlement in pending_settlements:
         db.delete(settlement)
     
     # Commit the deletions
@@ -868,6 +932,14 @@ async def finalize_group_splits(
         # The amount to settle is the minimum of what the debtor owes and what the creditor is owed
         amount = min(abs(max_debtor[1]), abs(max_creditor[1]))
         
+        # Skip if this payment pair already has a confirmed settlement
+        if (max_debtor[0], max_creditor[0]) in confirmed_pairs:
+            print(f"Skipping already confirmed settlement from {max_debtor[0]} to {max_creditor[0]}")
+            # Still need to update balances since we're skipping this settlement
+            net_balances[max_debtor[0]] += amount
+            net_balances[max_creditor[0]] -= amount
+            continue
+            
         if amount > Decimal('0'):
             due_date = datetime.utcnow() + timedelta(days=7)
             
@@ -918,12 +990,9 @@ async def finalize_group_splits(
             net_balances[max_debtor[0]] += amount
             net_balances[max_creditor[0]] -= amount
             
-            print(f"Settlement: {member_names[max_debtor[0]]} pays {amount} to {member_names[max_creditor[0]]}")
+            print(f"Created settlement: {member_names[max_debtor[0]]} pays {amount} to {member_names[max_creditor[0]]}")
             print(f"Updated balance for {member_names[max_debtor[0]]}: {net_balances[max_debtor[0]]}")
             print(f"Updated balance for {member_names[max_creditor[0]]}: {net_balances[max_creditor[0]]}")
-
-    # REMOVED: No longer marking expenses as settled
-    # We want to keep the balances visible in the UI
     
     db.commit()
     return settlements
