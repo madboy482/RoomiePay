@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSettlementHistory, processPayment, getGroupSettlements } from '../services/api';
+import { getSettlementHistory, processPayment, finalizeGroupSplits } from '../services/api';
 import PaymentPortal from './PaymentPortal';
 
 const Settlements = ({ groupId }) => {
@@ -35,8 +35,8 @@ const Settlements = ({ groupId }) => {
 
     const handleFinalizeSplits = async () => {
         try {
-            const response = await getGroupSettlements(groupId);
-            setFinalizedSettlements(response.data);
+            const settlements = await finalizeGroupSplits(groupId, true);
+            setFinalizedSettlements(settlements);
             setShowFinalizedModal(true);
         } catch (err) {
             setError(err.response?.data?.detail || 'Error finalizing splits');
