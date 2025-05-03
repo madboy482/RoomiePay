@@ -62,6 +62,10 @@ export const getGroups = () =>
     api.get('/groups');
 
 export const addExpense = (expenseData) => {
+    // Log the headers being sent
+    const token = localStorage.getItem('token');
+    console.log('Token being sent:', token);
+    
     console.log('Adding expense with data:', expenseData);
     return api.post('/expenses', expenseData);
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
     getGroupExpenses,
     getGroupBalances,
@@ -13,6 +13,7 @@ import PaymentPortal from './PaymentPortal';
 
 const Group = () => {
     const { groupId } = useParams();
+    const navigate = useNavigate();
     const [expenses, setExpenses] = useState([]);
     const [balances, setBalances] = useState({ Members: [] });
     const [openAddExpense, setOpenAddExpense] = useState(false);
@@ -65,31 +66,47 @@ const Group = () => {
     const handleAddExpense = async (e) => {
         e.preventDefault();
         try {
-            const currentUser = JSON.parse(localStorage.getItem('user'));
-            if (!currentUser) {
-                throw new Error('User not logged in');
-            }
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
             
+            if (!token || !userStr) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                navigate('/login');
+                return;
+            }
+
+            const currentUser = JSON.parse(userStr);
             const expenseData = {
                 GroupID: parseInt(groupId),
                 Amount: parseFloat(expenseForm.Amount),
                 Description: expenseForm.Description,
-                PaidByUserID: currentUser.UserID
+                PaidByUserID: currentUser.UserID  // Explicitly set the paying user
             };
             
-            console.log('Sending expense data:', expenseData);
+            console.log('Adding expense as user:', currentUser.Name, '(ID:', currentUser.UserID, ')');
             const response = await addExpense(expenseData);
-            console.log('Add expense response:', response.data);
+            console.log('Expense added:', response.data);
+            
             setOpenAddExpense(false);
             setExpenseForm({
                 Amount: '',
                 Description: '',
                 SplitType: 'EQUAL'
             });
-            loadGroupData(); // Refresh the data
+            
+            await loadGroupData();
         } catch (error) {
-            console.error('Failed to add expense:', error.response?.data || error);
-            alert(error.response?.data?.detail || 'Failed to add expense');
+            console.error('Failed to add expense:', error);
+            if (error.response?.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                navigate('/login');
+            } else if (error.response?.status === 403) {
+                alert('You are not a member of this group');
+            } else {
+                alert(error.response?.data?.detail || 'Failed to add expense');
+            }
         }
     };
 
@@ -137,7 +154,7 @@ const Group = () => {
 
     return (
         <div className="p-6">
-            {/* Header with Time Filter */}
+            {/* Header with Members List */}
             <div className="mb-6">
                 <div className="flex justify-between items-center mb-4">
                     <h1 className="text-2xl font-bold">Group Overview</h1>
@@ -154,6 +171,21 @@ const Group = () => {
                         >
                             Add Expense
                         </button>
+                    </div>
+                </div>
+
+                {/* Members List */}
+                <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <h2 className="text-lg font-semibold mb-3">Group Members</h2>
+                    <div className="flex flex-wrap gap-2">
+                        {balances.Members.map((member) => (
+                            <div 
+                                key={member.UserID}
+                                className="bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700"
+                            >
+                                {member.Name}
+                            </div>
+                        ))}
                     </div>
                 </div>
                 
