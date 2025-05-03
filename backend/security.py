@@ -36,6 +36,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    print(f"Verifying token: {token[:10]}...")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -44,12 +45,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
+        print(f"Token email: {email}")
         if email is None:
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT Error: {str(e)}")
         raise credentials_exception
     
     user = db.query(models.User).filter(models.User.Email == email).first()
     if user is None:
+        print(f"No user found for email: {email}")
         raise credentials_exception
+    print(f"Found user: {user.UserID} ({user.Name})")
     return user

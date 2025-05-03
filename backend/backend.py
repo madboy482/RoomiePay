@@ -182,13 +182,17 @@ async def get_group_expenses(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    # Modified query to include user details in a single query
+    # Modified query to include user details in a single query, properly scoped to the group
     query = db.query(models.Expense, models.User)\
-        .join(
-            models.User,
-            models.User.UserID == models.Expense.PaidByUserID
+        .join(models.User, models.User.UserID == models.Expense.PaidByUserID)\
+        .join(models.GroupMember, 
+            (models.GroupMember.GroupID == models.Expense.GroupID) & 
+            (models.GroupMember.UserID == models.User.UserID)
         )\
-        .filter(models.Expense.GroupID == group_id)\
+        .filter(
+            models.Expense.GroupID == group_id,
+            models.GroupMember.GroupID == group_id  # Ensure expenses are only from group members
+        )\
         .order_by(models.Expense.Date.desc())
     
     if start_date:
@@ -250,11 +254,16 @@ async def get_group_balances(
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
     # Get group info
-    group = db.query(models.UserGroup).filter(models.UserGroup.GroupID == group_id).first()
+    group = db.query(models.UserGroup)\
+        .join(models.GroupMember)\
+        .filter(
+            models.UserGroup.GroupID == group_id,
+            models.GroupMember.UserID == current_user.UserID
+        ).first()
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     
-    # Get all members
+    # Get all members of THIS group only
     members = db.query(models.User)\
         .join(models.GroupMember)\
         .filter(models.GroupMember.GroupID == group_id)\
@@ -270,13 +279,18 @@ async def get_group_balances(
             "NetBalance": Decimal("0")
         }
     
-    # Calculate what each person paid
+    # Calculate what each person paid ONLY for this group
     paid_amounts = db.query(
         models.Expense.PaidByUserID,
         func.sum(models.Expense.Amount).label('total_paid')
+    ).join(
+        models.GroupMember,
+        (models.GroupMember.GroupID == models.Expense.GroupID) &
+        (models.GroupMember.UserID == models.Expense.PaidByUserID)
     ).filter(
         models.Expense.GroupID == group_id,
-        models.Expense.IsSettled == False
+        models.Expense.IsSettled == False,
+        models.GroupMember.GroupID == group_id  # Additional check to ensure expenses are from group members
     ).group_by(models.Expense.PaidByUserID).all()
     
     # Convert all amounts to Decimal for consistency
@@ -539,6 +553,8 @@ async def join_group(
     current_user: models.User = Depends(get_current_user)
 ):
     try:
+        print(f"User {current_user.Name} (ID: {current_user.UserID}) attempting to join group with code {invite_code}")
+        
         # Validate invite code format
         if not invite_code or len(invite_code) != 8:
             raise HTTPException(
@@ -556,17 +572,28 @@ async def join_group(
                 detail="Invalid invite code. Group not found."
             )
         
+        print(f"Found group: {group.GroupName} (ID: {group.GroupID})")
+        
         # Check if user is already a member
         existing_member = db.query(models.GroupMember)\
             .filter(
                 models.GroupMember.GroupID == group.GroupID,
                 models.GroupMember.UserID == current_user.UserID
             ).first()
+            
         if existing_member:
-            raise HTTPException(
-                status_code=400, 
-                detail="You are already a member of this group"
-            )
+            print(f"Found existing membership: GroupID={group.GroupID}, UserID={current_user.UserID}")
+            # Try to fix inconsistent state by removing the existing membership
+            try:
+                db.delete(existing_member)
+                db.commit()
+                print(f"Removed existing membership")
+            except Exception as e:
+                print(f"Failed to remove existing membership: {str(e)}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail="You are already a member of this group and we couldn't fix the state"
+                )
         
         # Create new member
         new_member = models.GroupMember(
@@ -578,8 +605,10 @@ async def join_group(
         
         try:
             db.commit()
+            print(f"Successfully added user to group")
         except Exception as e:
             db.rollback()
+            print(f"Failed to add user to group: {str(e)}")
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to join group: {str(e)}"
@@ -590,6 +619,7 @@ async def join_group(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Unexpected error while joining group: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"

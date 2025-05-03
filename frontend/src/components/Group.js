@@ -59,17 +59,20 @@ const Group = () => {
     const handleAddExpense = async (e) => {
         e.preventDefault();
         const currentUser = JSON.parse(localStorage.getItem('user'));
+        console.log('Current user from localStorage:', currentUser);
+        
         const expenseData = {
             GroupID: parseInt(groupId),
             Amount: parseFloat(expenseForm.Amount),
             Description: expenseForm.Description,
-            PaidByUserID: currentUser.UserID,  // Always use the current user's ID
+            PaidByUserID: currentUser.UserID,
             SplitType: 'EQUAL',
-            Splits: null  // Required by the schema but not used for equal splits
+            Splits: null
         };
         console.log('Sending expense data:', expenseData);
         try {
-            await addExpense(expenseData);
+            const response = await addExpense(expenseData);
+            console.log('Add expense response:', response.data);
             setOpenAddExpense(false);
             loadGroupData();
         } catch (error) {
