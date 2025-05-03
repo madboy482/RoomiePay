@@ -1,5 +1,5 @@
 -- Create the database;
-CREATE DATABASE RoomiePayDB;
+CREATE DATABASE IF NOT EXISTS RoomiePayDB;
 
 -- Use the database
 USE RoomiePayDB;

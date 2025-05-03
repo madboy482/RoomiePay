@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text, inspect
 from typing import List, Dict, Optional
 import models, schemas
 from security import get_current_user, get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -11,9 +11,65 @@ import string
 from datetime import datetime, timedelta
 from decimal import Decimal
 import asyncio
+import os
+import re
+
+# Create tables using SQL commands from cmds.txt
+def create_tables_from_sql():
+    try:
+        # Read SQL commands from cmds.txt
+        cmds_file_path = os.path.join(os.path.dirname(__file__), 'cmds.txt')
+        with open(cmds_file_path, 'r') as file:
+            sql_commands = file.read()
+        
+        # Check which tables already exist
+        inspector = inspect(engine)
+        existing_tables = inspector.get_table_names()
+        print(f"Existing tables: {existing_tables}")
+        
+        # Split into individual commands and execute
+        conn = engine.connect()
+        commands = sql_commands.split(';')
+        
+        for command in commands:
+            if command.strip():
+                # Skip the CREATE DATABASE and USE commands as we've already set up the database connection
+                if command.strip().startswith('CREATE DATABASE') or command.strip().startswith('USE'):
+                    continue
+                
+                # Check if this is a CREATE TABLE command and extract the table name
+                create_match = re.search(r'CREATE TABLE\s+(\w+)', command, re.IGNORECASE)
+                if create_match:
+                    table_name = create_match.group(1).lower()
+                    # Skip if table already exists
+                    if table_name in [t.lower() for t in existing_tables]:
+                        print(f"Table '{table_name}' already exists, skipping creation")
+                        continue
+                
+                # Execute the command
+                try:
+                    conn.execute(text(command))
+                    print(f"Executed SQL: {command[:50]}...")
+                except Exception as e:
+                    print(f"Error executing SQL command: {e}")
+        
+        conn.commit()
+        conn.close()
+        print("Table creation process completed")
+        
+    except Exception as e:
+        print(f"Error creating tables from SQL: {e}")
+        # Fall back to SQLAlchemy metadata creation
+        models.Base.metadata.create_all(bind=engine)
+        print("Tables created using SQLAlchemy metadata")
 
 # Create database tables
-models.Base.metadata.create_all(bind=engine)
+try:
+    create_tables_from_sql()
+except Exception as e:
+    print(f"Error during table creation: {e}")
+    # Fall back to SQLAlchemy metadata creation
+    models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 

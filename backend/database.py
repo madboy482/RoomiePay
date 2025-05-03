@@ -1,17 +1,9 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 import urllib.parse
-
-load_dotenv()
-
-# Get database credentials from environment variables
-db_user = os.getenv('DB_USER', '')
-db_password = os.getenv('DB_PASSWORD', '')
-db_host = os.getenv('DB_HOST', '')
-db_name = os.getenv('DB_NAME', '')
 
 # Check if the password contains characters that need to be encoded
 special_chars = ['@', '/', '?', '%', '#', '&', '+']
