@@ -59,6 +59,8 @@ CREATE TABLE Settlements (
     Date DATETIME DEFAULT CURRENT_TIMESTAMP,
     Status ENUM('Pending', 'Confirmed') DEFAULT 'Pending',
     PaymentMethod VARCHAR(50),
+    DueDate DATETIME,
+    PaymentDate DATETIME,
     FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE,
     FOREIGN KEY (PayerUserID) REFERENCES Users(UserID) ON DELETE CASCADE,
     FOREIGN KEY (ReceiverUserID) REFERENCES Users(UserID) ON DELETE CASCADE
@@ -75,4 +77,27 @@ CREATE TABLE Invitations (
     ExpiryDate DATETIME,
     FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE,
     FOREIGN KEY (SenderUserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Create Notifications table
+CREATE TABLE Notifications (
+    NotificationID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT NOT NULL,
+    Message TEXT NOT NULL,
+    Type VARCHAR(50) NOT NULL,
+    IsRead BOOLEAN NOT NULL DEFAULT FALSE,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+-- Create SettlementPeriods table
+CREATE TABLE SettlementPeriods (
+    PeriodID INT AUTO_INCREMENT PRIMARY KEY,
+    GroupID INT NOT NULL,
+    Period VARCHAR(10) NOT NULL,
+    NextSettlement DATETIME,
+    LastSettlement DATETIME,
+    TotalPendingAmount DECIMAL(10,2) DEFAULT 0,
+    LastBatchID VARCHAR(36),
+    FOREIGN KEY (GroupID) REFERENCES UserGroups(GroupID) ON DELETE CASCADE
 );
