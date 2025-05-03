@@ -14,8 +14,15 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', '')
 DB_HOST = os.getenv('DB_HOST')
 DB_NAME = os.getenv('DB_NAME', 'RoomiePayDB')
 
-# URL encode the password to properly handle special characters like @
-encoded_password = urllib.parse.quote_plus(DB_PASSWORD)
+# Check if the password contains characters that need to be encoded
+special_chars = ['@', '/', '?', '%', '#', '&', '+']
+needs_encoding = any(char in DB_PASSWORD for char in special_chars)
+
+# Encode the password if it contains special characters
+if needs_encoding:
+    encoded_password = urllib.parse.quote_plus(DB_PASSWORD)
+else:
+    encoded_password = DB_PASSWORD
 
 # Create database if it doesn't exist
 def create_database():
