@@ -63,7 +63,7 @@ export const getGroups = () =>
 
 export const addExpense = (expenseData) => {
     console.log('Adding expense with data:', expenseData);
-    return api.post('/expenses/split', expenseData);
+    return api.post('/expenses', expenseData);
 };
 
 export const getGroupExpenses = (groupId, period = null) => {

@@ -39,7 +39,6 @@ class Expense(Base):
     Description = Column(String(255))
     Date = Column(DateTime, default=func.now())
     IsSettled = Column(Boolean, default=False)
-    SettlementBatchID = Column(String(36), nullable=True)  # To group related settlements
 
 class Settlement(Base):
     __tablename__ = "Settlements"
@@ -54,8 +53,6 @@ class Settlement(Base):
     PaymentMethod = Column(String(50))
     DueDate = Column(DateTime, nullable=True)
     PaymentDate = Column(DateTime, nullable=True)
-    BatchID = Column(String(36), nullable=True)  # To group related settlements
-    IsProcessed = Column(Boolean, default=False)  # Track if settlement has been processed
 
 class Invitation(Base):
     __tablename__ = "Invitations"

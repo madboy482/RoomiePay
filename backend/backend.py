@@ -134,7 +134,7 @@ async def get_user_groups(
     return member_groups
 
 # Expense endpoints
-@app.post("/expenses", response_model=schemas.Expense)
+@app.post("/expenses", response_model=schemas.ExpenseResponse)
 async def create_expense(
     expense: schemas.ExpenseCreate,
     db: Session = Depends(get_db),
@@ -149,18 +149,32 @@ async def create_expense(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    # Create the expense with IsSettled explicitly set to False
+    # Create the expense with only the fields that exist in the database
     db_expense = models.Expense(
         GroupID=expense.GroupID,
-        PaidByUserID=expense.PaidByUserID,
+        PaidByUserID=current_user.UserID,
         Amount=expense.Amount,
         Description=expense.Description,
         IsSettled=False
     )
-    db.add(db_expense)
-    db.commit()
-    db.refresh(db_expense)
-    return db_expense
+    
+    try:
+        db.add(db_expense)
+        db.commit()
+        db.refresh(db_expense)
+        
+        # Get user details for the response
+        paid_by_user = db.query(models.User)\
+            .filter(models.User.UserID == db_expense.PaidByUserID)\
+            .first()
+            
+        return {
+            **db_expense.__dict__,
+            "PaidByUser": paid_by_user
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/groups/{group_id}/expenses")
 async def get_group_expenses(
@@ -488,10 +502,7 @@ async def get_settlements_summary(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    query = db.query(models.Settlement).join(
-        models.User,
-        models.User.UserID == models.Settlement.PayerUserID
-    ).filter(models.Settlement.GroupID == group_id)
+    query = db.query(models.Settlement).filter(models.Settlement.GroupID == group_id)
     
     if start_date:
         query = query.filter(models.Settlement.Date >= start_date)

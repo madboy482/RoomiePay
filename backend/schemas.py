@@ -38,27 +38,25 @@ class Group(GroupBase):
     class Config:
         from_attributes = True
 
-class ExpenseBase(BaseModel):
+class ExpenseCreate(BaseModel):
     GroupID: int
     Amount: Decimal
     Description: str
     PaidByUserID: int
 
-class ExpenseCreate(ExpenseBase):
-    pass
+class ExpenseSplit(ExpenseCreate):
+    SplitType: str = "EQUAL"
+    Splits: Optional[Dict[int, float]] = None
 
-class Expense(ExpenseBase):
+class Expense(ExpenseCreate):
     ExpenseID: int
     Date: datetime
-    IsSettled: bool
-
+    IsSettled: bool = False
+    
     class Config:
         from_attributes = True
 
-class ExpenseResponse(ExpenseBase):
-    ExpenseID: int
-    Date: datetime
-    IsSettled: bool
+class ExpenseResponse(Expense):
     PaidByUser: User
     
     class Config:

@@ -40,7 +40,7 @@ const Group = () => {
             const [expensesRes, balancesRes, summaryRes] = await Promise.all([
                 getGroupExpenses(groupId, timeFilter !== 'all' ? timeFilter : null),
                 getGroupBalances(groupId),
-                getSettlementSummary(`/groups/${groupId}/settlements/summary${timeFilter !== 'all' ? `?period=${timeFilter}` : ''}`)
+                getSettlementSummary(groupId, timeFilter !== 'all' ? timeFilter : null)
             ]);
             
             setExpenses(expensesRes.data);
@@ -64,26 +64,32 @@ const Group = () => {
 
     const handleAddExpense = async (e) => {
         e.preventDefault();
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-        console.log('Current user from localStorage:', currentUser);
-        
-        const expenseData = {
-            GroupID: parseInt(groupId),
-            Amount: parseFloat(expenseForm.Amount),
-            Description: expenseForm.Description,
-            PaidByUserID: currentUser.UserID,
-            SplitType: 'EQUAL',
-            Splits: null
-        };
-        console.log('Sending expense data:', expenseData);
         try {
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            if (!currentUser) {
+                throw new Error('User not logged in');
+            }
+            
+            const expenseData = {
+                GroupID: parseInt(groupId),
+                Amount: parseFloat(expenseForm.Amount),
+                Description: expenseForm.Description,
+                PaidByUserID: currentUser.UserID
+            };
+            
+            console.log('Sending expense data:', expenseData);
             const response = await addExpense(expenseData);
             console.log('Add expense response:', response.data);
             setOpenAddExpense(false);
-            loadGroupData();
+            setExpenseForm({
+                Amount: '',
+                Description: '',
+                SplitType: 'EQUAL'
+            });
+            loadGroupData(); // Refresh the data
         } catch (error) {
             console.error('Failed to add expense:', error.response?.data || error);
-            alert('Failed to add expense');
+            alert(error.response?.data?.detail || 'Failed to add expense');
         }
     };
 
