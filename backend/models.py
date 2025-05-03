@@ -36,9 +36,10 @@ class Expense(Base):
     GroupID = Column(Integer, ForeignKey("UserGroups.GroupID", ondelete="CASCADE"), nullable=False)
     PaidByUserID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), nullable=False)
     Amount = Column(Numeric(10, 2), nullable=False)
-    Description = Column(String(255), nullable=False)
+    Description = Column(String(255))
     Date = Column(DateTime, default=func.now())
-    IsSettled = Column(Boolean, default=False, nullable=False)
+    IsSettled = Column(Boolean, default=False)
+    SettlementBatchID = Column(String(36), nullable=True)  # To group related settlements
 
 class Settlement(Base):
     __tablename__ = "Settlements"
@@ -53,6 +54,8 @@ class Settlement(Base):
     PaymentMethod = Column(String(50))
     DueDate = Column(DateTime, nullable=True)
     PaymentDate = Column(DateTime, nullable=True)
+    BatchID = Column(String(36), nullable=True)  # To group related settlements
+    IsProcessed = Column(Boolean, default=False)  # Track if settlement has been processed
 
 class Invitation(Base):
     __tablename__ = "Invitations"
@@ -79,6 +82,8 @@ class SettlementPeriod(Base):
     __tablename__ = "SettlementPeriods"
     
     GroupID = Column(Integer, ForeignKey("UserGroups.GroupID", ondelete="CASCADE"), primary_key=True)
-    Period = Column(String(10), nullable=False)  # "1h", "1d", "1w", "1m"
+    Period = Column(String(10), nullable=False, default="1m")  # e.g., "1h", "1d", "1w", "1m"
     LastSettlement = Column(DateTime, nullable=True)
     NextSettlement = Column(DateTime, nullable=True)
+    TotalPendingAmount = Column(Numeric(10, 2), default=0)  # Track total pending settlements
+    LastBatchID = Column(String(36), nullable=True)  # Track last settlement batch

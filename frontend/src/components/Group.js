@@ -43,10 +43,16 @@ const Group = () => {
                 getSettlementSummary(`/groups/${groupId}/settlements/summary${timeFilter !== 'all' ? `?period=${timeFilter}` : ''}`)
             ]);
             
-            console.log('Loaded expenses:', expensesRes.data);
             setExpenses(expensesRes.data);
             setBalances(balancesRes.data);
             setSettlementSummary(summaryRes.data);
+
+            // Calculate total expenses
+            const totalExpenses = expensesRes.data.reduce((sum, expense) => sum + Number(expense.Amount), 0);
+            setSettlementSummary(prev => ({
+                ...prev,
+                TotalAmount: totalExpenses
+            }));
         } catch (error) {
             console.error('Failed to load group data:', error);
         }
@@ -125,216 +131,207 @@ const Group = () => {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Group Expenses</h1>
-                <div className="flex space-x-2">
-                    <button 
-                        className="border border-blue-600 text-blue-600 px-4 py-2 rounded hover:bg-blue-50"
-                        onClick={() => setShowSettlementConfig(true)}
-                    >
-                        Configure Settlement Period
-                    </button>
-                    <button 
-                        className="border border-purple-600 text-purple-600 px-4 py-2 rounded hover:bg-purple-50"
-                        onClick={handleFinalizeSplits}
-                    >
-                        Finalize Splits
-                    </button>
-                    <button 
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                        onClick={() => setOpenAddExpense(true)}
-                    >
-                        Add Expense
-                    </button>
-                </div>
-            </div>
-
-            {/* Time Filter */}
+            {/* Header with Time Filter */}
             <div className="mb-6">
-                <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Time Period
-                    </label>
-                    <select 
-                        className="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        value={timeFilter} 
-                        onChange={handleTimeFilterChange}
-                    >
-                        <option value="all">All Time</option>
-                        <option value="day">Last 24 Hours</option>
-                        <option value="week">Last Week</option>
-                        <option value="month">Last Month</option>
-                        <option value="year">Last Year</option>
-                    </select>
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold">Group Overview</h1>
+                    <div className="flex space-x-3">
+                        <button 
+                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                            onClick={handleFinalizeSplits}
+                        >
+                            Settle Now
+                        </button>
+                        <button 
+                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                            onClick={() => setOpenAddExpense(true)}
+                        >
+                            Add Expense
+                        </button>
+                    </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Time Period
+                        </label>
+                        <select 
+                            className="block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            value={timeFilter} 
+                            onChange={handleTimeFilterChange}
+                        >
+                            <option value="all">All Time</option>
+                            <option value="day">Last 24 Hours</option>
+                            <option value="week">Last Week</option>
+                            <option value="month">Last Month</option>
+                            <option value="year">Last Year</option>
+                        </select>
+                    </div>
+                    <div className="flex space-x-2">
+                        <button 
+                            className="text-gray-600 hover:text-gray-800 font-medium"
+                            onClick={() => setShowSettlementConfig(true)}
+                        >
+                            Settlement Settings
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Settlement Summary */}
-            {settlementSummary && (
-                <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                    <h2 className="text-lg font-semibold mb-2">Settlement Summary</h2>
-                    <p className="text-gray-700">
-                        Period: {settlementSummary.Period}
+            {/* Quick Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                {/* Total Expenses Card */}
+                <div className="bg-white rounded-lg shadow-md p-4">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">Total Expenses</h3>
+                    <p className="text-2xl font-bold text-gray-900">
+                        ${Number(settlementSummary?.TotalAmount || 0).toFixed(2)}
                     </p>
-                    <p className="text-gray-700">
-                        Total Amount: ${settlementSummary.TotalAmount}
+                    <p className="text-sm text-gray-500 mt-1">
+                        {expenses.length} transactions
                     </p>
                 </div>
-            )}
 
-            {/* Balances Section */}
+                {/* Per Person Share Card */}
+                <div className="bg-white rounded-lg shadow-md p-4">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">Per Person Share</h3>
+                    <p className="text-2xl font-bold text-gray-900">
+                        ${(Number(settlementSummary?.TotalAmount || 0) / (balances.Members.length || 1)).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Split among {balances.Members.length} members
+                    </p>
+                </div>
+
+                {/* Settlement Period Card */}
+                <div className="bg-white rounded-lg shadow-md p-4">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">Settlement Period</h3>
+                    <p className="text-lg font-medium text-gray-900">
+                        {settlementPeriod === '1h' ? 'Hourly' :
+                         settlementPeriod === '1d' ? 'Daily' :
+                         settlementPeriod === '1w' ? 'Weekly' :
+                         settlementPeriod === '1m' ? 'Monthly' :
+                         'Custom'}
+                    </p>
+                    <button 
+                        onClick={() => setShowSettlementConfig(true)}
+                        className="text-sm text-blue-600 hover:text-blue-800 mt-1"
+                    >
+                        Configure
+                    </button>
+                </div>
+            </div>
+
+            {/* Member Balances */}
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                <h2 className="text-lg font-semibold mb-2">Balances</h2>
-                <ul className="divide-y divide-gray-200">
+                <h2 className="text-lg font-semibold mb-4">Member Balances</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {balances.Members.map((member) => (
-                        <li key={member.UserID} className="py-3">
-                            <div>
-                                <p className="font-medium text-lg mb-1">{member.Name}</p>
-                                <div className="space-y-1">
-                                    <p className="text-sm text-gray-600">
-                                        Net Balance: <span className={member.NetBalance > 0 ? "text-green-600" : member.NetBalance < 0 ? "text-red-600" : "text-gray-600"}>
-                                            ${Number(member.NetBalance).toFixed(2)}
-                                        </span>
+                        <div 
+                            key={member.UserID} 
+                            className={`p-4 rounded-lg border ${
+                                member.NetBalance > 0 ? 'bg-green-50 border-green-200' : 
+                                member.NetBalance < 0 ? 'bg-red-50 border-red-200' : 
+                                'bg-gray-50 border-gray-200'
+                            }`}
+                        >
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="font-medium text-lg">{member.Name}</h3>
+                                    <p className={`text-sm mt-1 ${
+                                        member.NetBalance > 0 ? 'text-green-600' : 
+                                        member.NetBalance < 0 ? 'text-red-600' : 
+                                        'text-gray-600'
+                                    }`}>
+                                        Net Balance: ${Number(member.NetBalance).toFixed(2)}
                                     </p>
-                                    {Number(member.OwesAmount) > 0 && (
-                                        <div className="text-sm">
-                                            <p className="text-red-600 font-medium">
-                                                Needs to pay: ${Number(member.OwesAmount).toFixed(2)}
-                                            </p>
-                                            <p className="text-gray-500 text-xs mt-1">
-                                                Your share of the total expenses
-                                            </p>
-                                        </div>
-                                    )}
-                                    {Number(member.IsOwedAmount) > 0 && (
-                                        <div className="text-sm">
-                                            <p className="text-green-600 font-medium">
-                                                Will receive: ${Number(member.IsOwedAmount).toFixed(2)}
-                                            </p>
-                                            <p className="text-gray-500 text-xs mt-1">
-                                                Total amount you paid for the group
-                                            </p>
-                                        </div>
-                                    )}
-                                    <div className="text-xs text-gray-500 mt-2">
-                                        Each person's equal share: ${(Number(settlementSummary?.TotalAmount || 0) / balances.Members.length).toFixed(2)}
-                                    </div>
                                 </div>
                             </div>
-                        </li>
+                            <div className="mt-2 space-y-1 text-sm">
+                                {Number(member.OwesAmount) > 0 && (
+                                    <p className="text-red-600">
+                                        Owes: ${Number(member.OwesAmount).toFixed(2)}
+                                    </p>
+                                )}
+                                {Number(member.IsOwedAmount) > 0 && (
+                                    <p className="text-green-600">
+                                        Is Owed: ${Number(member.IsOwedAmount).toFixed(2)}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     ))}
-                </ul>
-                <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                    <p className="text-sm text-gray-600">
-                        <span className="font-medium">Total Group Expenses:</span> ${settlementSummary?.TotalAmount || '0.00'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                        Split equally among {balances.Members.length} members
-                    </p>
                 </div>
             </div>
 
-            {/* Expenses List */}
-            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                <h2 className="text-lg font-semibold mb-4">Expense Transactions</h2>
-                
-                {/* Spending Summary */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-md font-semibold mb-3">Spending Summary</h3>
-                    {Object.entries(expenses.reduce((acc, expense) => {
-                        // Group by description (category)
-                        const category = expense.Description.toLowerCase();
-                        if (!acc[category]) {
-                            acc[category] = {
-                                total: 0,
-                                count: 0,
-                                transactions: []
-                            };
-                        }
-                        acc[category].total += Number(expense.Amount);
-                        acc[category].count += 1;
-                        acc[category].transactions.push(expense);
-                        return acc;
-                    }, {})).map(([category, data]) => (
-                        <div key={category} className="mb-3 pb-3 border-b border-gray-200 last:border-0">
-                            <div className="flex justify-between items-center mb-1">
-                                <p className="font-medium capitalize">{category}</p>
+            {/* Transaction History */}
+            <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold">Transaction History</h2>
+                    <button 
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        onClick={handleFinalizeSplits}
+                    >
+                        View Settlement Status
+                    </button>
+                </div>
+
+                <div className="space-y-6">
+                    {/* Per Person Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(expenses.reduce((acc, expense) => {
+                            const payer = expense.PaidByUser.Name;
+                            if (!acc[payer]) {
+                                acc[payer] = {
+                                    total: 0,
+                                    count: 0
+                                };
+                            }
+                            acc[payer].total += Number(expense.Amount);
+                            acc[payer].count += 1;
+                            return acc;
+                        }, {})).map(([payer, data]) => (
+                            <div key={payer} className="bg-gray-50 rounded-lg p-4">
+                                <h3 className="font-medium mb-2">{payer}</h3>
+                                <p className="text-lg font-bold text-blue-600">
+                                    ${Number(data.total).toFixed(2)}
+                                </p>
                                 <p className="text-sm text-gray-600">
                                     {data.count} transaction{data.count !== 1 ? 's' : ''}
                                 </p>
                             </div>
-                            <p className="text-lg font-bold text-blue-600">
-                                ${Number(data.total).toFixed(2)}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Per Person Summary */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h3 className="text-md font-semibold mb-3">Per Person Spending</h3>
-                    {Object.entries(expenses.reduce((acc, expense) => {
-                        const payer = expense.PaidByUser.Name;
-                        if (!acc[payer]) {
-                            acc[payer] = {
-                                total: 0,
-                                transactions: []
-                            };
-                        }
-                        acc[payer].total += Number(expense.Amount);
-                        acc[payer].transactions.push(expense);
-                        return acc;
-                    }, {})).map(([payer, data]) => (
-                        <div key={payer} className="mb-3 pb-3 border-b border-gray-200 last:border-0">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="font-medium">{payer}</p>
-                                    <p className="text-sm text-gray-600">
-                                        {data.transactions.length} transaction{data.transactions.length !== 1 ? 's' : ''}
-                                    </p>
-                                </div>
-                                <p className="text-lg font-bold text-green-600">
-                                    ${Number(data.total).toFixed(2)}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Detailed Transaction List */}
-                <div>
-                    <h3 className="text-md font-semibold mb-3">All Transactions</h3>
-                    <ul className="divide-y divide-gray-200">
-                        {expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date)).map((expense) => (
-                            <li key={expense.ExpenseID} className="py-4">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-medium text-lg">
-                                            {expense.Description}
-                                        </p>
-                                        <div className="text-sm text-gray-600 space-y-1 mt-1">
-                                            <p>
-                                                Paid by: <span className="font-medium">{expense.PaidByUser.Name}</span>
-                                            </p>
-                                            <p>
-                                                Date: {new Date(expense.Date).toLocaleString()}
-                                            </p>
-                                            <p>
-                                                Status: <span className={expense.IsSettled ? "text-green-600" : "text-yellow-600"}>
-                                                    {expense.IsSettled ? 'Settled' : 'Pending Settlement'}
-                                                </span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-lg font-bold text-gray-900">
-                                            ${Number(expense.Amount).toFixed(2)}
-                                        </p>
-                                    </div>
-                                </div>
-                            </li>
                         ))}
-                    </ul>
+                    </div>
+
+                    {/* Transactions List */}
+                    <div>
+                        <h3 className="text-md font-medium mb-3">Recent Transactions</h3>
+                        <div className="overflow-hidden">
+                            <ul className="divide-y divide-gray-200">
+                                {expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date)).map((expense) => (
+                                    <li key={expense.ExpenseID} className="py-4">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-medium">{expense.Description}</p>
+                                                <div className="text-sm text-gray-600 mt-1">
+                                                    <p>Paid by {expense.PaidByUser.Name}</p>
+                                                    <p>{new Date(expense.Date).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-lg">
+                                                    ${Number(expense.Amount).toFixed(2)}
+                                                </p>
+                                                <p className="text-sm text-gray-500">
+                                                    {expense.IsSettled ? 'Settled' : 'Pending'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -433,64 +430,34 @@ const Group = () => {
             {showFinalizeDialog && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
-                        <h2 className="text-xl font-semibold mb-4">Finalize Group Settlements</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Settlement Status</h2>
+                            <button 
+                                className="text-gray-500 hover:text-gray-700"
+                                onClick={() => setShowFinalizeDialog(false)}
+                            >
+                                <span className="sr-only">Close</span>
+                                ×
+                            </button>
+                        </div>
 
-                        {/* Total Group Summary */}
-                        <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                            <div className="flex justify-between items-center mb-2">
-                                <h3 className="text-lg font-semibold text-blue-800">Total Group Summary</h3>
+                        <div className="space-y-6">
+                            {/* Settlement Summary */}
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                                <h3 className="font-medium mb-2">Total Settlements</h3>
                                 <p className="text-2xl font-bold text-blue-800">
                                     ${Number(settlementSummary?.TotalAmount || 0).toFixed(2)}
                                 </p>
+                                <p className="text-sm text-blue-600 mt-1">
+                                    Split among {balances.Members.length} members
+                                </p>
                             </div>
-                            <p className="text-sm text-blue-600">
-                                Split equally among {balances.Members.length} members
-                                (${(Number(settlementSummary?.TotalAmount || 0) / balances.Members.length).toFixed(2)} per person)
-                            </p>
-                        </div>
 
-                        {/* Member Balances */}
-                        <div className="mb-6">
-                            <h3 className="text-md font-semibold mb-3">Current Member Balances</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                {balances.Members.map(member => (
-                                    <div key={member.UserID} className={`p-4 rounded-lg border ${
-                                        member.NetBalance > 0 ? 'bg-green-50 border-green-200' : 
-                                        member.NetBalance < 0 ? 'bg-red-50 border-red-200' : 
-                                        'bg-gray-50 border-gray-200'
-                                    }`}>
-                                        <p className="font-medium text-lg mb-1">{member.Name}</p>
-                                        <div className="space-y-1">
-                                            <p className={`text-sm ${
-                                                member.NetBalance > 0 ? 'text-green-600' : 
-                                                member.NetBalance < 0 ? 'text-red-600' : 
-                                                'text-gray-600'
-                                            }`}>
-                                                Net Balance: ${Number(member.NetBalance).toFixed(2)}
-                                            </p>
-                                            {Number(member.OwesAmount) > 0 && (
-                                                <p className="text-red-600 text-sm">
-                                                    Needs to pay: ${Number(member.OwesAmount).toFixed(2)}
-                                                </p>
-                                            )}
-                                            {Number(member.IsOwedAmount) > 0 && (
-                                                <p className="text-green-600 text-sm">
-                                                    Will receive: ${Number(member.IsOwedAmount).toFixed(2)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        {/* Settlement Actions */}
-                        <div className="border-t border-gray-200 pt-4">
-                            <h3 className="text-md font-semibold mb-3">Required Payments</h3>
+                            {/* Settlement List */}
                             {finalizedSettlements && finalizedSettlements.length > 0 ? (
-                                <ul className="divide-y divide-gray-200">
+                                <div className="space-y-4">
                                     {finalizedSettlements.map((settlement, index) => (
-                                        <li key={index} className="py-4">
+                                        <div key={index} className="bg-white border rounded-lg p-4">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <p className="font-medium">
@@ -498,31 +465,23 @@ const Group = () => {
                                                     </p>
                                                     <div className="text-sm text-gray-600 mt-1">
                                                         <p>Amount: ${Number(settlement.Amount).toFixed(2)}</p>
-                                                        <p>Due by: {new Date(settlement.DueDate).toLocaleDateString()}</p>
+                                                        <p>Due: {new Date(settlement.DueDate).toLocaleDateString()}</p>
                                                     </div>
                                                 </div>
-                                                <button 
-                                                    className="bg-blue-600 text-white px-4 py-2 text-sm rounded hover:bg-blue-700"
-                                                    onClick={() => handlePayNow(settlement)}
-                                                >
-                                                    Pay Now
-                                                </button>
+                                                <span className={`px-2 py-1 text-sm rounded-full ${
+                                                    settlement.Status === 'Pending' 
+                                                        ? 'bg-yellow-100 text-yellow-800' 
+                                                        : 'bg-green-100 text-green-800'
+                                                }`}>
+                                                    {settlement.Status}
+                                                </span>
                                             </div>
-                                        </li>
+                                        </div>
                                     ))}
-                                </ul>
+                                </div>
                             ) : (
-                                <p className="text-gray-500 text-center py-4">No settlements to finalize</p>
+                                <p className="text-center text-gray-500">No settlements to display</p>
                             )}
-                        </div>
-                        
-                        <div className="flex justify-end mt-6">
-                            <button 
-                                className="text-gray-600 hover:text-gray-800 font-medium px-4 py-2"
-                                onClick={() => setShowFinalizeDialog(false)}
-                            >
-                                Close
-                            </button>
                         </div>
                     </div>
                 </div>

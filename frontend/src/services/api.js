@@ -74,8 +74,13 @@ export const getGroupExpenses = (groupId, period = null) => {
     return api.get(url);
 };
 
-export const getSettlementSummary = (url) =>
-    api.get(url);
+export const getSettlementSummary = (groupId, period = null) => {
+    let url = `/groups/${groupId}/settlements/summary`;
+    if (period) {
+        url += `?period=${period}`;
+    }
+    return api.get(url);
+};
 
 export const getGroupBalances = (groupId) => 
     api.get(`/groups/${groupId}/balances`);
