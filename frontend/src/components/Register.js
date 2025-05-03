@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../services/api';
 
@@ -31,68 +30,83 @@ const Register = () => {
     };
 
     return (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-            <Paper elevation={3} sx={{ padding: 4, width: '300px' }}>
-                <Typography variant="h5" align="center" gutterBottom>
+        <div className="flex justify-center items-center min-h-screen">
+            <div className="bg-white shadow-lg rounded-lg p-8 w-80">
+                <h2 className="text-xl font-semibold text-center mb-4">
                     Register for RoomiePay
-                </Typography>
+                </h2>
                 <form onSubmit={handleSubmit}>
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Name"
-                        name="Name"
-                        value={formData.Name}
-                        onChange={handleChange}
-                        required
-                    />
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Email"
-                        name="Email"
-                        type="email"
-                        value={formData.Email}
-                        onChange={handleChange}
-                        required
-                    />
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Password"
-                        name="Password"
-                        type="password"
-                        value={formData.Password}
-                        onChange={handleChange}
-                        required
-                    />
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Phone"
-                        name="Phone"
-                        value={formData.Phone}
-                        onChange={handleChange}
-                    />
-                    <Button
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="name">
+                            Name
+                        </label>
+                        <input
+                            id="name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="text"
+                            name="Name"
+                            value={formData.Name}
+                            onChange={handleChange}
+                            required
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="email">
+                            Email
+                        </label>
+                        <input
+                            id="email"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="email"
+                            name="Email"
+                            value={formData.Email}
+                            onChange={handleChange}
+                            required
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="password">
+                            Password
+                        </label>
+                        <input
+                            id="password"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="password"
+                            name="Password"
+                            value={formData.Password}
+                            onChange={handleChange}
+                            required
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="phone">
+                            Phone
+                        </label>
+                        <input
+                            id="phone"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="text"
+                            name="Phone"
+                            value={formData.Phone}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    <button
                         type="submit"
-                        fullWidth
-                        variant="contained"
-                        sx={{ mt: 3 }}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 mt-6"
                     >
                         Register
-                    </Button>
-                    <Button
-                        fullWidth
-                        variant="text"
-                        sx={{ mt: 1 }}
+                    </button>
+                    <button
+                        type="button"
+                        className="w-full text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md transition duration-200 mt-2"
                         onClick={() => navigate('/login')}
                     >
                         Back to Login
-                    </Button>
+                    </button>
                 </form>
-            </Paper>
-        </Box>
+            </div>
+        </div>
     );
 };
 
