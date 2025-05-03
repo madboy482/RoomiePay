@@ -150,7 +150,7 @@ async def create_expense(
         raise HTTPException(status_code=403, detail="Not a member of this group")
 
     # Use current_user's ID if PaidByUserID is not provided
-    paid_by_user_id = expense.PaidByUserID if expense.PaidByUserID else current_user.UserID
+    paid_by_user_id = expense.PaidByUserID if expense.PaidByUserID is not None else current_user.UserID
     
     # Verify the PaidByUserID is also a member of the group
     payer_member = db.query(models.GroupMember)\
