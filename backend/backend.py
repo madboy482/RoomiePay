@@ -204,19 +204,18 @@ async def create_expense(
         ).first()
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
-    
-    # Use the provided PaidByUserID or fall back to current user's ID
-    paid_by_user_id = getattr(expense, 'PaidByUserID', current_user.UserID)
+
+    # Use current_user's ID if PaidByUserID is not provided
+    paid_by_user_id = expense.PaidByUserID if expense.PaidByUserID is not None else current_user.UserID
     
     # Verify the PaidByUserID is also a member of the group
-    if paid_by_user_id != current_user.UserID:
-        payer_member = db.query(models.GroupMember)\
-            .filter(
-                models.GroupMember.GroupID == expense.GroupID,
-                models.GroupMember.UserID == paid_by_user_id
-            ).first()
-        if not payer_member:
-            raise HTTPException(status_code=403, detail="Payer must be a member of this group")
+    payer_member = db.query(models.GroupMember)\
+        .filter(
+            models.GroupMember.GroupID == expense.GroupID,
+            models.GroupMember.UserID == paid_by_user_id
+        ).first()
+    if not payer_member:
+        raise HTTPException(status_code=400, detail="Payer must be a member of the group")
     
     db_expense = models.Expense(
         GroupID=expense.GroupID,
@@ -661,18 +660,11 @@ async def join_group(
             ).first()
             
         if existing_member:
-            print(f"Found existing membership: GroupID={group.GroupID}, UserID={current_user.UserID}")
-            # Try to fix inconsistent state by removing the existing membership
-            try:
-                db.delete(existing_member)
-                db.commit()
-                print(f"Removed existing membership")
-            except Exception as e:
-                print(f"Failed to remove existing membership: {str(e)}")
-                raise HTTPException(
-                    status_code=400, 
-                    detail="You are already a member of this group and we couldn't fix the state"
-                )
+            print(f"User is already a member of this group")
+            return {
+                "message": "Already a member of this group",
+                "GroupID": group.GroupID
+            }
         
         # Create new member
         new_member = models.GroupMember(
@@ -693,7 +685,10 @@ async def join_group(
                 detail=f"Failed to join group: {str(e)}"
             )
             
-        return {"message": "Successfully joined the group"}
+        return {
+            "message": "Successfully joined the group",
+            "GroupID": group.GroupID
+        }
         
     except HTTPException:
         raise

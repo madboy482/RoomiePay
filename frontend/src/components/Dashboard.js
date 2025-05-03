@@ -44,9 +44,23 @@ const Dashboard = () => {
         e.preventDefault();
         setError('');
         try {
-            await joinGroup(inviteCode);
+            const response = await joinGroup(inviteCode);
+            console.log('Join group response:', response);
+            
+            // Close the join dialog
             setOpenJoin(false);
-            loadGroups();
+            setInviteCode('');
+            
+            // Refresh groups list
+            await loadGroups();
+            
+            // Get the group ID from the response and navigate to it
+            if (response.data && response.data.GroupID) {
+                navigate(`/group/${response.data.GroupID}`);
+            } else {
+                // If we don't have the group ID, just refresh the dashboard
+                loadGroups();
+            }
         } catch (error) {
             console.error('Join group error:', error);
             setError(error.response?.data?.detail || 'Failed to join group. Please check the invite code.');
