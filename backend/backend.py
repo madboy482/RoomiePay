@@ -149,10 +149,22 @@ async def create_expense(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    # Create the expense with only the fields that exist in the database
+    # Use the provided PaidByUserID or fall back to current user's ID
+    paid_by_user_id = getattr(expense, 'PaidByUserID', current_user.UserID)
+    
+    # Verify the PaidByUserID is also a member of the group
+    if paid_by_user_id != current_user.UserID:
+        payer_member = db.query(models.GroupMember)\
+            .filter(
+                models.GroupMember.GroupID == expense.GroupID,
+                models.GroupMember.UserID == paid_by_user_id
+            ).first()
+        if not payer_member:
+            raise HTTPException(status_code=403, detail="Payer must be a member of this group")
+    
     db_expense = models.Expense(
         GroupID=expense.GroupID,
-        PaidByUserID=current_user.UserID,
+        PaidByUserID=paid_by_user_id,
         Amount=expense.Amount,
         Description=expense.Description,
         IsSettled=False
