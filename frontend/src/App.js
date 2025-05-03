@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, AppBar, Toolbar, Typography, Button } from '@mui/material';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
@@ -21,22 +20,38 @@ const PrivateLayout = ({ children }) => {
   if (!token) return <Navigate to="/login" />;
   
   return (
-    <Box>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            RoomiePay
-          </Typography>
-          <Button color="inherit" href="/dashboard">Dashboard</Button>
-          <Button color="inherit" href="/settlements">Settlements</Button>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Notifications />
-            <ProfileMenu />
-          </Box>
-        </Toolbar>
-      </AppBar>
-      {children}
-    </Box>
+    <div className="w-full">
+      <nav className="bg-blue-600 text-white shadow-md">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <h1 className="text-xl font-bold flex-grow">
+              RoomiePay
+            </h1>
+            <div className="flex space-x-4">
+              <a 
+                href="/dashboard" 
+                className="px-3 py-2 text-white hover:bg-blue-700 rounded-md"
+              >
+                Dashboard
+              </a>
+              <a 
+                href="/settlements" 
+                className="px-3 py-2 text-white hover:bg-blue-700 rounded-md"
+              >
+                Settlements
+              </a>
+              <div className="flex items-center gap-4">
+                <Notifications />
+                <ProfileMenu />
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <main className="container mx-auto px-4 py-6">
+        {children}
+      </main>
+    </div>
   );
 };
 

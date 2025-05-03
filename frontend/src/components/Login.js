@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/api';
 
@@ -21,49 +20,54 @@ const Login = () => {
     };
 
     return (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-            <Paper elevation={3} sx={{ padding: 4, width: '300px' }}>
-                <Typography variant="h5" align="center" gutterBottom>
+        <div className="flex justify-center items-center min-h-screen">
+            <div className="bg-white shadow-lg rounded-lg p-8 w-80">
+                <h2 className="text-xl font-semibold text-center mb-4">
                     RoomiePay Login
-                </Typography>
+                </h2>
                 <form onSubmit={handleSubmit}>
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                    <Button
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="email">
+                            Email
+                        </label>
+                        <input
+                            id="email"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-medium mb-1" htmlFor="password">
+                            Password
+                        </label>
+                        <input
+                            id="password"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <button
                         type="submit"
-                        fullWidth
-                        variant="contained"
-                        sx={{ mt: 3 }}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 mt-4"
                     >
                         Login
-                    </Button>
-                    <Button
-                        fullWidth
-                        variant="text"
-                        sx={{ mt: 1 }}
+                    </button>
+                    <button
+                        type="button"
+                        className="w-full text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md transition duration-200 mt-2"
                         onClick={() => navigate('/register')}
                     >
                         Create Account
-                    </Button>
+                    </button>
                 </form>
-            </Paper>
-        </Box>
+            </div>
+        </div>
     );
 };
 
