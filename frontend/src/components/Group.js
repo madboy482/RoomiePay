@@ -432,39 +432,93 @@ const Group = () => {
             {/* Finalize Splits Dialog */}
             {showFinalizeDialog && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-3xl">
-                        <h2 className="text-xl font-semibold mb-4">Finalized Settlements</h2>
-                        
-                        {finalizedSettlements && finalizedSettlements.length > 0 ? (
-                            <ul className="divide-y divide-gray-200">
-                                {finalizedSettlements.map((settlement, index) => (
-                                    <li key={index} className="py-3">
-                                        <div className="flex justify-between items-center">
-                                            <p className="font-medium">
-                                                Payment Required: ${Number(settlement.Amount).toFixed(2)}
+                    <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+                        <h2 className="text-xl font-semibold mb-4">Finalize Group Settlements</h2>
+
+                        {/* Total Group Summary */}
+                        <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="text-lg font-semibold text-blue-800">Total Group Summary</h3>
+                                <p className="text-2xl font-bold text-blue-800">
+                                    ${Number(settlementSummary?.TotalAmount || 0).toFixed(2)}
+                                </p>
+                            </div>
+                            <p className="text-sm text-blue-600">
+                                Split equally among {balances.Members.length} members
+                                (${(Number(settlementSummary?.TotalAmount || 0) / balances.Members.length).toFixed(2)} per person)
+                            </p>
+                        </div>
+
+                        {/* Member Balances */}
+                        <div className="mb-6">
+                            <h3 className="text-md font-semibold mb-3">Current Member Balances</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                {balances.Members.map(member => (
+                                    <div key={member.UserID} className={`p-4 rounded-lg border ${
+                                        member.NetBalance > 0 ? 'bg-green-50 border-green-200' : 
+                                        member.NetBalance < 0 ? 'bg-red-50 border-red-200' : 
+                                        'bg-gray-50 border-gray-200'
+                                    }`}>
+                                        <p className="font-medium text-lg mb-1">{member.Name}</p>
+                                        <div className="space-y-1">
+                                            <p className={`text-sm ${
+                                                member.NetBalance > 0 ? 'text-green-600' : 
+                                                member.NetBalance < 0 ? 'text-red-600' : 
+                                                'text-gray-600'
+                                            }`}>
+                                                Net Balance: ${Number(member.NetBalance).toFixed(2)}
                                             </p>
-                                            <button 
-                                                className="bg-blue-600 text-white px-3 py-1 text-sm rounded hover:bg-blue-700"
-                                                onClick={() => handlePayNow(settlement)}
-                                            >
-                                                Pay Now
-                                            </button>
+                                            {Number(member.OwesAmount) > 0 && (
+                                                <p className="text-red-600 text-sm">
+                                                    Needs to pay: ${Number(member.OwesAmount).toFixed(2)}
+                                                </p>
+                                            )}
+                                            {Number(member.IsOwedAmount) > 0 && (
+                                                <p className="text-green-600 text-sm">
+                                                    Will receive: ${Number(member.IsOwedAmount).toFixed(2)}
+                                                </p>
+                                            )}
                                         </div>
-                                        <div className="text-sm text-gray-700 mt-1">
-                                            <p>From: {settlement.PayerName}</p>
-                                            <p>To: {settlement.ReceiverName}</p>
-                                            <p>Due by: {new Date(settlement.DueDate).toLocaleDateString()}</p>
-                                        </div>
-                                    </li>
+                                    </div>
                                 ))}
-                            </ul>
-                        ) : (
-                            <p>No settlements to finalize</p>
-                        )}
+                            </div>
+                        </div>
                         
-                        <div className="flex justify-end mt-4">
+                        {/* Settlement Actions */}
+                        <div className="border-t border-gray-200 pt-4">
+                            <h3 className="text-md font-semibold mb-3">Required Payments</h3>
+                            {finalizedSettlements && finalizedSettlements.length > 0 ? (
+                                <ul className="divide-y divide-gray-200">
+                                    {finalizedSettlements.map((settlement, index) => (
+                                        <li key={index} className="py-4">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="font-medium">
+                                                        {settlement.PayerName} → {settlement.ReceiverName}
+                                                    </p>
+                                                    <div className="text-sm text-gray-600 mt-1">
+                                                        <p>Amount: ${Number(settlement.Amount).toFixed(2)}</p>
+                                                        <p>Due by: {new Date(settlement.DueDate).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    className="bg-blue-600 text-white px-4 py-2 text-sm rounded hover:bg-blue-700"
+                                                    onClick={() => handlePayNow(settlement)}
+                                                >
+                                                    Pay Now
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-gray-500 text-center py-4">No settlements to finalize</p>
+                            )}
+                        </div>
+                        
+                        <div className="flex justify-end mt-6">
                             <button 
-                                className="text-blue-600 hover:text-blue-800 font-medium"
+                                className="text-gray-600 hover:text-gray-800 font-medium px-4 py-2"
                                 onClick={() => setShowFinalizeDialog(false)}
                             >
                                 Close
