@@ -107,8 +107,19 @@ export const markNotificationRead = (notificationId) =>
 export const getUnpaidSettlements = (userId) =>
     api.get(`/users/${userId}/pending_settlements`);
 
-export const finalizeGroupSplits = (groupId) =>
-    api.post(`/groups/${groupId}/finalize-splits`);
+export const finalizeGroupSplits = async (groupId, forceCreate = true) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/groups/${groupId}/finalize-splits`, 
+      { force_create: forceCreate, include_all: true },
+      { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }
+    );
+    return response; // Return the full response object, not just response.data
+  } catch (error) {
+    console.error("Error finalizing group splits:", error);
+    throw error;
+  }
+};
 
 // Settlement endpoints
 export const getSettlementHistory = () => 
@@ -117,8 +128,17 @@ export const getSettlementHistory = () =>
 export const processPayment = (settlementId, amount) => 
     api.post(`/settlements/${settlementId}/process-payment`, { amount });
 
-export const getGroupSettlements = (groupId, includeAll = true) => 
-    api.post(`/groups/${groupId}/finalize-splits`, { include_all: includeAll });
+export const getGroupSettlements = async (groupId) => {
+  try {
+    const response = await axios.get(`${API_URL}/groups/${groupId}/settlements`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching group settlements:", error);
+    throw error;
+  }
+};
 
 export const getGroupInviteCode = (groupId) =>
     api.get(`/groups/${groupId}/invite-code`);
