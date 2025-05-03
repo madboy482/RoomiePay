@@ -39,7 +39,6 @@ const Group = () => {
 
     useEffect(() => {
         loadGroupData();
-        checkAdminStatus();
     }, [groupId, timeFilter]);
 
     const loadGroupData = async () => {
@@ -60,12 +59,15 @@ const Group = () => {
                 ...prev,
                 TotalAmount: totalExpenses
             }));
+            
+            // Check admin status after loading balances
+            checkAdminStatus(balancesRes.data);
         } catch (error) {
             console.error('Failed to load group data:', error);
         }
     };
 
-    const checkAdminStatus = async () => {
+    const checkAdminStatus = (balancesData) => {
         try {
             // Get the stored user data
             const userStr = localStorage.getItem('user');
@@ -74,10 +76,9 @@ const Group = () => {
             const user = JSON.parse(userStr);
             const userId = user.UserID;
 
-            // Find the current group in balances members to check if user is admin
-            const balancesResponse = await getGroupBalances(groupId);
-            const groupMembers = balancesResponse.data.Members;
-
+            // Use the balances data that was already loaded
+            const groupMembers = balancesData.Members;
+            
             // For the purposes of this demo, we'll assume the creator of the group is the admin
             // In a real app, you'd have a specific API endpoint to check admin status
             // or the group members API would include isAdmin flag
