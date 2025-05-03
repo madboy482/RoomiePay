@@ -11,12 +11,25 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('API Request:', {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        data: config.data
+    });
     return config;
 });
 
 // Add response interceptor to handle token expiration
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log('API Response:', {
+            url: response.config.url,
+            status: response.status,
+            data: response.data
+        });
+        return response;
+    },
     (error) => {
         if (error.response && error.response.status === 401) {
             // Clear invalid token
@@ -24,6 +37,11 @@ api.interceptors.response.use(
             // Redirect to login page
             window.location.href = '/login';
         }
+        console.error('API Error:', {
+            url: error.config?.url,
+            status: error.response?.status,
+            data: error.response?.data
+        });
         return Promise.reject(error);
     }
 );
@@ -43,8 +61,10 @@ export const joinGroup = (inviteCode) =>
 export const getGroups = () => 
     api.get('/groups');
 
-export const addExpense = (expenseData) => 
-    api.post('/expenses/split', expenseData);
+export const addExpense = (expenseData) => {
+    console.log('Adding expense with data:', expenseData);
+    return api.post('/expenses/split', expenseData);
+};
 
 export const getGroupExpenses = (groupId, period = null) => {
     let url = `/groups/${groupId}/expenses`;

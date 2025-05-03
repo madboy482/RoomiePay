@@ -26,8 +26,7 @@ const Group = () => {
     const [expenseForm, setExpenseForm] = useState({
         Amount: '',
         Description: '',
-        SplitType: 'EQUAL',
-        PaidByUserID: JSON.parse(localStorage.getItem('user'))?.UserID
+        SplitType: 'EQUAL'
     });
     const [settlementPeriod, setSettlementPeriodState] = useState('1m'); // Default 1 month
     const [showSettlementConfig, setShowSettlementConfig] = useState(false);
@@ -48,6 +47,7 @@ const Group = () => {
                 getSettlementSummary(`/groups/${groupId}/settlements/summary${timeFilter !== 'all' ? `?period=${timeFilter}` : ''}`)
             ]);
             
+            console.log('Loaded expenses:', expensesRes.data);
             setExpenses(expensesRes.data);
             setBalances(balancesRes.data);
             setSettlementSummary(summaryRes.data);
@@ -62,11 +62,12 @@ const Group = () => {
 
     const handleAddExpense = async (e) => {
         e.preventDefault();
+        const currentUser = JSON.parse(localStorage.getItem('user'));
         const expenseData = {
             GroupID: parseInt(groupId),
             Amount: parseFloat(expenseForm.Amount),
             Description: expenseForm.Description,
-            PaidByUserID: JSON.parse(localStorage.getItem('user'))?.UserID,
+            PaidByUserID: currentUser.UserID,  // Always use the current user's ID
             SplitType: 'EQUAL',
             Splits: null  // Required by the schema but not used for equal splits
         };

@@ -171,6 +171,8 @@ async def get_group_expenses(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    print(f"Getting expenses for group {group_id}, user: {current_user.UserID} ({current_user.Name})")
+    
     # Verify user is in group
     member = db.query(models.GroupMember)\
         .filter(
@@ -180,8 +182,9 @@ async def get_group_expenses(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
-    query = db.query(models.Expense)\
-        .outerjoin(
+    # Modified query to include user details in a single query
+    query = db.query(models.Expense, models.User)\
+        .join(
             models.User,
             models.User.UserID == models.Expense.PaidByUserID
         )\
@@ -205,13 +208,29 @@ async def get_group_expenses(
         if start_date:
             query = query.filter(models.Expense.Date >= start_date)
     
-    expenses = query.all()
+    results = query.all()
+    print(f"Found {len(results)} expenses")
     
-    # Add user details to each expense
-    for expense in expenses:
-        expense.PaidByUser = db.query(models.User)\
-            .filter(models.User.UserID == expense.PaidByUserID)\
-            .first()
+    # Transform the results to include user details
+    expenses = []
+    for expense, user in results:
+        expense_dict = {
+            "ExpenseID": expense.ExpenseID,
+            "GroupID": expense.GroupID,
+            "PaidByUserID": expense.PaidByUserID,
+            "Amount": expense.Amount,
+            "Description": expense.Description,
+            "Date": expense.Date,
+            "IsSettled": expense.IsSettled,
+            "PaidByUser": {
+                "UserID": user.UserID,
+                "Name": user.Name,
+                "Email": user.Email,
+                "Phone": user.Phone
+            }
+        }
+        print(f"Expense {expense.ExpenseID}: {expense.Amount} paid by {user.Name} ({user.UserID})")
+        expenses.append(expense_dict)
     
     return expenses
 
@@ -287,6 +306,9 @@ async def create_split_expense(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    print(f"Creating split expense: {expense.model_dump()}")
+    print(f"Current user: {current_user.UserID} ({current_user.Name})")
+    
     # Verify user is in group
     member = db.query(models.GroupMember)\
         .filter(
@@ -296,6 +318,8 @@ async def create_split_expense(
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this group")
     
+    print(f"User {current_user.Name} is member of group {expense.GroupID}")
+    
     # Get total number of group members for equal split
     member_count = db.query(models.GroupMember)\
         .filter(models.GroupMember.GroupID == expense.GroupID)\
@@ -304,13 +328,17 @@ async def create_split_expense(
     if not member_count:
         raise HTTPException(status_code=400, detail="No members in group")
     
-    # Create the expense
+    print(f"Group has {member_count} members")
+    
+    # Create the expense with the provided PaidByUserID
     db_expense = models.Expense(
         GroupID=expense.GroupID,
-        PaidByUserID=expense.PaidByUserID,
+        PaidByUserID=expense.PaidByUserID,  # Use the provided PaidByUserID
         Amount=expense.Amount,
         Description=expense.Description
     )
+    print(f"Creating expense with PaidByUserID: {db_expense.PaidByUserID}")
+    
     db.add(db_expense)
     db.commit()
     db.refresh(db_expense)
@@ -318,35 +346,38 @@ async def create_split_expense(
     # Create settlements based on split type
     if expense.SplitType == "EQUAL":
         share_amount = expense.Amount / member_count
+        print(f"Equal split: {share_amount} per member")
         members = db.query(models.GroupMember)\
             .filter(models.GroupMember.GroupID == expense.GroupID)\
             .all()
         
         for member in members:
-            if member.UserID != expense.PaidByUserID:
+            if member.UserID != db_expense.PaidByUserID:  # Compare with the expense's PaidByUserID
                 settlement = models.Settlement(
                     GroupID=expense.GroupID,
                     PayerUserID=member.UserID,
-                    ReceiverUserID=expense.PaidByUserID,
+                    ReceiverUserID=db_expense.PaidByUserID,
                     Amount=share_amount
                 )
                 db.add(settlement)
+                print(f"Created settlement: {member.UserID} pays {share_amount} to {db_expense.PaidByUserID}")
     
     elif expense.SplitType == "PERCENTAGE" and expense.Splits:
         total_percentage = sum(expense.Splits.values())
-        if abs(total_percentage - 100.0) > 0.01:  # Allow small floating point differences
+        if abs(total_percentage - 100.0) > 0.01:
             raise HTTPException(status_code=400, detail="Split percentages must sum to 100")
             
         for user_id, percentage in expense.Splits.items():
-            if user_id != expense.PaidByUserID:
+            if user_id != db_expense.PaidByUserID:
                 amount = expense.Amount * (percentage / 100.0)
                 settlement = models.Settlement(
                     GroupID=expense.GroupID,
                     PayerUserID=user_id,
-                    ReceiverUserID=expense.PaidByUserID,
+                    ReceiverUserID=db_expense.PaidByUserID,
                     Amount=amount
                 )
                 db.add(settlement)
+                print(f"Created percentage settlement: {user_id} pays {amount} to {db_expense.PaidByUserID}")
     
     db.commit()
     return db_expense
@@ -507,28 +538,62 @@ async def join_group(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    group = db.query(models.UserGroup)\
-        .filter(models.UserGroup.InviteCode == invite_code)\
-        .first()
-    if not group:
-        raise HTTPException(status_code=404, detail="Invalid invite code")
-    
-    existing_member = db.query(models.GroupMember)\
-        .filter(
-            models.GroupMember.GroupID == group.GroupID,
-            models.GroupMember.UserID == current_user.UserID
-        ).first()
-    if existing_member:
-        raise HTTPException(status_code=400, detail="Already a member of this group")
-    
-    new_member = models.GroupMember(
-        UserID=current_user.UserID,
-        GroupID=group.GroupID,
-        IsAdmin=False
-    )
-    db.add(new_member)
-    db.commit()
-    return {"message": "Successfully joined the group"}
+    try:
+        # Validate invite code format
+        if not invite_code or len(invite_code) != 8:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid invite code format. Code should be 8 characters long."
+            )
+
+        # Find the group
+        group = db.query(models.UserGroup)\
+            .filter(models.UserGroup.InviteCode == invite_code)\
+            .first()
+        if not group:
+            raise HTTPException(
+                status_code=404, 
+                detail="Invalid invite code. Group not found."
+            )
+        
+        # Check if user is already a member
+        existing_member = db.query(models.GroupMember)\
+            .filter(
+                models.GroupMember.GroupID == group.GroupID,
+                models.GroupMember.UserID == current_user.UserID
+            ).first()
+        if existing_member:
+            raise HTTPException(
+                status_code=400, 
+                detail="You are already a member of this group"
+            )
+        
+        # Create new member
+        new_member = models.GroupMember(
+            UserID=current_user.UserID,
+            GroupID=group.GroupID,
+            IsAdmin=False
+        )
+        db.add(new_member)
+        
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to join group: {str(e)}"
+            )
+            
+        return {"message": "Successfully joined the group"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred: {str(e)}"
+        )
 
 @app.post("/groups/{group_id}/settlement-period")
 async def set_settlement_period(

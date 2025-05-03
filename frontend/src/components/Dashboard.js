@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Paper, Grid, Dialog, TextField } from '@mui/material';
+import { Box, Button, Typography, Paper, Grid, Dialog, TextField, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { getGroups, createGroup, joinGroup } from '../services/api';
 
@@ -11,6 +11,7 @@ const Dashboard = () => {
     const [inviteCode, setInviteCode] = useState('');
     const [newGroupInviteCode, setNewGroupInviteCode] = useState('');
     const [showInviteCode, setShowInviteCode] = useState(false);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -23,29 +24,33 @@ const Dashboard = () => {
             setGroups(response.data);
         } catch (error) {
             console.error('Failed to load groups:', error);
+            setError('Failed to load groups');
         }
     };
 
     const handleCreateGroup = async (e) => {
         e.preventDefault();
+        setError('');
         try {
             const response = await createGroup(groupForm);
             setNewGroupInviteCode(response.data.InviteCode);
             setShowInviteCode(true);
             loadGroups();
         } catch (error) {
-            alert('Failed to create group');
+            setError('Failed to create group');
         }
     };
 
     const handleJoinGroup = async (e) => {
         e.preventDefault();
+        setError('');
         try {
             await joinGroup(inviteCode);
             setOpenJoin(false);
             loadGroups();
         } catch (error) {
-            alert('Failed to join group');
+            console.error('Join group error:', error);
+            setError(error.response?.data?.detail || 'Failed to join group. Please check the invite code.');
         }
     };
 
@@ -68,6 +73,12 @@ const Dashboard = () => {
                 </Button>
             </Box>
 
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+                    {error}
+                </Alert>
+            )}
+
             <Grid container spacing={2}>
                 {groups.map((group) => (
                     <Grid item xs={12} sm={6} md={4} key={group.GroupID}>
@@ -89,6 +100,7 @@ const Dashboard = () => {
             <Dialog open={openCreate} onClose={() => {
                 setOpenCreate(false);
                 setShowInviteCode(false);
+                setError('');
             }}>
                 <Box p={3} width={300}>
                     {!showInviteCode ? (
@@ -152,9 +164,21 @@ const Dashboard = () => {
             </Dialog>
 
             {/* Join Group Dialog */}
-            <Dialog open={openJoin} onClose={() => setOpenJoin(false)}>
+            <Dialog 
+                open={openJoin} 
+                onClose={() => {
+                    setOpenJoin(false);
+                    setInviteCode('');
+                    setError('');
+                }}
+            >
                 <Box p={3} width={300}>
                     <Typography variant="h6" gutterBottom>Join Group</Typography>
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 2 }}>
+                            {error}
+                        </Alert>
+                    )}
                     <form onSubmit={handleJoinGroup}>
                         <TextField
                             fullWidth
