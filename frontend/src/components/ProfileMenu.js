@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    IconButton, 
-    Avatar, 
-    Menu, 
-    MenuItem, 
-    ListItemIcon, 
-    ListItemText,
-    Divider,
-    Box,
-    Typography
-} from '@mui/material';
-import { 
     Person as PersonIcon,
     Settings as SettingsIcon,
     Logout as LogoutIcon
@@ -57,55 +46,68 @@ const ProfileMenu = () => {
 
     return (
         <>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2" color="inherit">
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-white">
                     {user.Name}
-                </Typography>
-                <IconButton
+                </span>
+                <button
                     onClick={handleClick}
-                    size="small"
+                    className="flex items-center justify-center rounded-full w-8 h-8 focus:outline-none"
                     aria-controls={open ? 'profile-menu' : undefined}
                     aria-haspopup="true"
                     aria-expanded={open ? 'true' : undefined}
                 >
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                    <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
                         {getInitials(user.Name)}
-                    </Avatar>
-                </IconButton>
-            </Box>
+                    </div>
+                </button>
+            </div>
 
-            <Menu
-                id="profile-menu"
-                anchorEl={anchorEl}
-                open={open}
-                onClose={handleClose}
-                onClick={handleClose}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-            >
-                <MenuItem>
-                    <ListItemIcon>
-                        <PersonIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText 
-                        primary="Profile"
-                        secondary={user.Email}
-                    />
-                </MenuItem>
-                <Divider />
-                <MenuItem>
-                    <ListItemIcon>
-                        <SettingsIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary="Settings" />
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>
-                    <ListItemIcon>
-                        <LogoutIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary="Logout" />
-                </MenuItem>
-            </Menu>
+            {open && (
+                <div className="fixed inset-0 z-50" onClick={handleClose}>
+                    <div 
+                        className="absolute bg-white rounded-md shadow-lg overflow-hidden w-56"
+                        style={{
+                            top: anchorEl.getBoundingClientRect().bottom + window.scrollY,
+                            right: window.innerWidth - anchorEl.getBoundingClientRect().right - 16,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="py-1">
+                            <div className="px-4 py-2 flex items-center">
+                                <div className="mr-2 text-gray-500">
+                                    <PersonIcon fontSize="small" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-700">Profile</p>
+                                    <p className="text-xs text-gray-500">{user.Email}</p>
+                                </div>
+                            </div>
+                            
+                            <hr className="my-1 border-gray-200" />
+                            
+                            <button 
+                                className="px-4 py-2 flex items-center w-full text-left hover:bg-gray-100"
+                            >
+                                <div className="mr-2 text-gray-500">
+                                    <SettingsIcon fontSize="small" />
+                                </div>
+                                <span className="text-sm text-gray-700">Settings</span>
+                            </button>
+                            
+                            <button 
+                                className="px-4 py-2 flex items-center w-full text-left hover:bg-gray-100"
+                                onClick={handleLogout}
+                            >
+                                <div className="mr-2 text-gray-500">
+                                    <LogoutIcon fontSize="small" />
+                                </div>
+                                <span className="text-sm text-gray-700">Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
