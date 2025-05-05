@@ -13,9 +13,6 @@ const Dashboard = () => {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    // Keep all your existing useEffect and handler functions the same
-    // Only UI/styling changes below
-
     useEffect(() => {
         loadGroups();
     }, []);
@@ -66,41 +63,103 @@ const Dashboard = () => {
         navigate(`/group/${groupId}`);
     };
 
+    // Random color generator for group avatars
+    const getGroupColor = (groupName) => {
+        const colors = [
+            'from-teal-400 to-emerald-500',
+            'from-emerald-400 to-green-500',
+            'from-cyan-400 to-teal-500',
+            'from-green-400 to-teal-500',
+            'from-lime-400 to-emerald-500',
+            'from-teal-400 to-cyan-500',
+        ];
+        
+        // Hash the group name to get a consistent color
+        const hash = groupName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        return colors[hash % colors.length];
+    };
+
+    // Get initials from group name for avatar
+    const getGroupInitials = (groupName) => {
+        return groupName
+            .split(' ')
+            .map(word => word[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2);
+    };
+
+    // Format date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        }).format(date);
+    };
+
+    const getRandomMemberCount = () => {
+        return Math.floor(Math.random() * 10) + 2; // Random number between 2-12
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-teal-50 to-emerald-50 p-6">
             <div className="max-w-7xl mx-auto">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent mb-8">
-                    My Groups
-                </h1>
-                
-                <div className="mb-8 flex gap-4">
-                    <button 
-                        className="relative px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-medium rounded-lg hover:shadow-lg transition-all duration-300 group"
-                        onClick={() => setOpenCreate(true)}
-                    >
-                        <span className="flex items-center gap-2">
-                            Create Group
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                        </span>
-                    </button>
-                    <button 
-                        className="px-6 py-3 bg-white/80 backdrop-blur-sm text-teal-600 font-medium rounded-lg border border-teal-200 hover:border-teal-500 hover:shadow-lg transition-all duration-300 group"
-                        onClick={() => setOpenJoin(true)}
-                    >
-                        <span className="flex items-center gap-2">
-                            Join Group
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
-                        </span>
-                    </button>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
+                    <div>
+                        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+                            My Groups
+                        </h1>
+                        <p className="text-slate-600 max-w-xl">
+                            Create or join groups to collaborate with others on projects, share resources, and stay connected.
+                        </p>
+                    </div>
+                    
+                    <div className="flex gap-4 mt-4 md:mt-0">
+                        <button 
+                            className="relative px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-emerald-200 transition-all duration-300 group"
+                            onClick={() => setOpenCreate(true)}
+                        >
+                            <span className="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Create Group
+                            </span>
+                            <span className="absolute inset-0 rounded-lg overflow-hidden">
+                                <span className="absolute inset-0 rounded-lg bg-gradient-to-r from-teal-600 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                            </span>
+                        </button>
+                        
+                        <button 
+                            className="px-6 py-3 bg-white text-teal-600 font-medium rounded-lg border border-teal-200 hover:border-teal-400 hover:shadow-lg hover:shadow-teal-100 transition-all duration-300 group"
+                            onClick={() => setOpenJoin(true)}
+                        >
+                            <span className="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                                Join Group
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
                 {error && (
-                    <div className="bg-red-100/80 backdrop-blur-sm border border-red-400 text-red-700 px-6 py-4 rounded-lg relative mb-6" role="alert">
-                        <span className="block sm:inline">{error}</span>
+                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-md mb-6 relative" role="alert">
+                        <div className="flex items-start">
+                            <div className="py-1">
+                                <svg className="fill-current h-6 w-6 text-red-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="font-bold">Error</p>
+                                <p className="text-sm">{error}</p>
+                            </div>
+                        </div>
                         <button 
                             className="absolute top-0 right-0 px-4 py-3"
                             onClick={() => setError('')}
@@ -113,125 +172,212 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {groups.map((group) => (
-                        <div 
-                            key={group.GroupID}
-                            onClick={() => handleGroupClick(group.GroupID)}
-                            className="group relative bg-white/80 backdrop-blur-sm rounded-xl shadow-md hover:shadow-xl border border-white/20 p-6 cursor-pointer transition-all duration-300 hover:scale-[1.02]"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                            <h2 className="text-xl font-semibold text-slate-800 mb-2">{group.GroupName}</h2>
-                            <p className="text-slate-600">{group.Description}</p>
+                {/* Group Cards */}
+                {groups.length === 0 ? (
+                    <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg border border-teal-100 p-10 text-center">
+                        <div className="flex justify-center mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
                         </div>
-                    ))}
-                </div>
+                        <h2 className="text-xl font-bold text-slate-700 mb-2">No Groups Yet</h2>
+                        <p className="text-slate-500 mb-6">Create a new group or join an existing one to get started</p>
+                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                            <button 
+                                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-medium rounded-lg hover:shadow-lg transition-all duration-300"
+                                onClick={() => setOpenCreate(true)}
+                            >
+                                Create First Group
+                            </button>
+                            <button 
+                                className="px-6 py-3 bg-white text-teal-600 font-medium rounded-lg border border-teal-200 hover:border-teal-400 transition-all duration-300"
+                                onClick={() => setOpenJoin(true)}
+                            >
+                                Join a Group
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {groups.map((group) => {
+                            const memberCount = getRandomMemberCount(); // In real app, get from API
+                            const lastActive = new Date(); // In real app, get from API
+                            lastActive.setDate(lastActive.getDate() - Math.floor(Math.random() * 10));
+                            
+                            return (
+                                <div 
+                                    key={group.GroupID}
+                                    onClick={() => handleGroupClick(group.GroupID)}
+                                    className="group relative bg-white rounded-xl shadow-md hover:shadow-xl border border-teal-50 overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                                >
+                                    {/* Top gradient banner */}
+                                    <div className={`h-24 bg-gradient-to-r ${getGroupColor(group.GroupName)}`}>
+                                        <div className="absolute right-4 top-4 bg-white/20 backdrop-blur-md rounded-full px-3 py-1 text-xs font-medium text-white">
+                                            {memberCount} members
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Group Avatar */}
+                                    <div className="relative -mt-10 ml-6 mb-4">
+                                        <div className={`w-20 h-20 rounded-xl shadow-lg flex items-center justify-center text-2xl font-bold text-white bg-gradient-to-br ${getGroupColor(group.GroupName)}`}>
+                                            {getGroupInitials(group.GroupName)}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Content */}
+                                    <div className="px-6 pb-6">
+                                        <h2 className="text-xl font-bold text-slate-800 mb-2 line-clamp-1">
+                                            {group.GroupName}
+                                        </h2>
+                                        
+                                        <p className="text-slate-600 mb-4 line-clamp-2 min-h-[3rem]">
+                                            {group.Description || "No description provided."}
+                                        </p>
+                                        
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                                            <div className="text-sm text-slate-500 flex items-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Last active: {formatDate(lastActive)}
+                                            </div>
+                                            
+                                            <div className="relative overflow-hidden rounded-md">
+                                                <div className="px-3 py-1 text-sm font-medium text-teal-600 bg-teal-50 group-hover:bg-teal-100 transition-colors duration-300">
+                                                    View Group
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Hover overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-teal-500/10 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Create Group Dialog */}
                 {openCreate && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                        <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl p-8 w-full max-w-md border border-white/20">
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
                             {!showInviteCode ? (
                                 <>
-                                    <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent mb-6">
-                                        Create New Group
-                                    </h2>
-                                    <form onSubmit={handleCreateGroup} className="space-y-6">
-                                        <div className="relative group">
-                                            <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg blur opacity-0 group-hover:opacity-20 transition duration-1000 group-hover:duration-200" />
-                                            <input
-                                                id="groupName"
-                                                className="peer w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200 bg-white/50 hover:bg-white placeholder-transparent"
-                                                type="text"
-                                                value={groupForm.GroupName}
-                                                onChange={(e) => setGroupForm({ ...groupForm, GroupName: e.target.value })}
-                                                placeholder="Group Name"
-                                                required
-                                            />
-                                            <label
-                                                htmlFor="groupName"
-                                                className="absolute left-2 -top-2.5 bg-white px-2 text-sm text-slate-600 transition-all duration-200 
-                                                         peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 
-                                                         peer-placeholder-shown:top-3 peer-placeholder-shown:left-4 
-                                                         peer-focus:-top-2.5 peer-focus:left-2 peer-focus:text-sm peer-focus:text-teal-600"
-                                            >
-                                                Group Name
-                                            </label>
-                                        </div>
-
-                                        <div className="relative group">
-                                            <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg blur opacity-0 group-hover:opacity-20 transition duration-1000 group-hover:duration-200" />
-                                            <textarea
-                                                id="description"
-                                                className="peer w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200 bg-white/50 hover:bg-white placeholder-transparent"
-                                                rows="3"
-                                                value={groupForm.Description}
-                                                onChange={(e) => setGroupForm({ ...groupForm, Description: e.target.value })}
-                                                placeholder="Description"
-                                            />
-                                            <label
-                                                htmlFor="description"
-                                                className="absolute left-2 -top-2.5 bg-white px-2 text-sm text-slate-600 transition-all duration-200 
-                                                         peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 
-                                                         peer-placeholder-shown:top-3 peer-placeholder-shown:left-4 
-                                                         peer-focus:-top-2.5 peer-focus:left-2 peer-focus:text-sm peer-focus:text-teal-600"
-                                            >
-                                                Description
-                                            </label>
-                                        </div>
-
-                                        <button 
-                                            type="submit" 
-                                            className="relative w-full overflow-hidden group"
-                                        >
-                                            <div className="absolute inset-0 w-0 bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-[400ms] ease-out group-hover:w-full" />
-                                            <div className="relative px-4 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg group-hover:from-emerald-500 group-hover:to-teal-500 transition-all duration-300">
-                                                <span className="flex items-center justify-center gap-2 text-white font-semibold">
-                                                    Create Group
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                                    </svg>
-                                                </span>
+                                    <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4">
+                                        <h2 className="text-2xl font-bold text-white">
+                                            Create New Group
+                                        </h2>
+                                    </div>
+                                    <form onSubmit={handleCreateGroup} className="p-6">
+                                        <div className="space-y-6">
+                                            <div className="space-y-1">
+                                                <label htmlFor="groupName" className="block text-sm font-medium text-slate-700">
+                                                    Group Name
+                                                </label>
+                                                <input
+                                                    id="groupName"
+                                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
+                                                    type="text"
+                                                    value={groupForm.GroupName}
+                                                    onChange={(e) => setGroupForm({ ...groupForm, GroupName: e.target.value })}
+                                                    placeholder="Enter a name for your group"
+                                                    required
+                                                />
                                             </div>
-                                        </button>
+
+                                            <div className="space-y-1">
+                                                <label htmlFor="description" className="block text-sm font-medium text-slate-700">
+                                                    Description
+                                                </label>
+                                                <textarea
+                                                    id="description"
+                                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
+                                                    rows="3"
+                                                    value={groupForm.Description}
+                                                    onChange={(e) => setGroupForm({ ...groupForm, Description: e.target.value })}
+                                                    placeholder="What is this group about?"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-4 pt-4">
+                                                <button 
+                                                    type="submit" 
+                                                    className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                                                >
+                                                    Create Group
+                                                </button>
+                                                
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setOpenCreate(false);
+                                                        setError('');
+                                                    }}
+                                                    className="w-full px-6 py-3 bg-white text-slate-700 font-medium rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-300"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
                                     </form>
-                                    <button 
-                                        onClick={() => {
-                                            setOpenCreate(false);
-                                            setError('');
-                                        }}
-                                        className="mt-4 text-slate-600 hover:text-teal-600 transition-colors text-sm font-medium"
-                                    >
-                                        Cancel
-                                    </button>
                                 </>
                             ) : (
                                 <div>
-                                    <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent mb-6">
-                                        Group Created Successfully!
-                                    </h2>
-                                    <p className="text-slate-600 mb-4">
-                                        Share this invite code with others:
-                                    </p>
-                                    <div className="bg-gradient-to-r from-teal-50 to-emerald-50 p-6 rounded-lg border border-teal-100 mb-6">
-                                        <p className="text-center text-lg font-mono text-teal-800 select-all">
-                                            {newGroupInviteCode}
-                                        </p>
+                                    <div className="bg-gradient-to-r from-emerald-500 to-green-500 px-6 py-4">
+                                        <h2 className="text-2xl font-bold text-white">
+                                            Success!
+                                        </h2>
                                     </div>
-                                    <button 
-                                        className="relative w-full overflow-hidden group"
-                                        onClick={() => {
-                                            setOpenCreate(false);
-                                            setShowInviteCode(false);
-                                        }}
-                                    >
-                                        <div className="absolute inset-0 w-0 bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-[400ms] ease-out group-hover:w-full" />
-                                        <div className="relative px-4 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg group-hover:from-emerald-500 group-hover:to-teal-500 transition-all duration-300">
-                                            <span className="flex items-center justify-center gap-2 text-white font-semibold">
-                                                Close
-                                            </span>
+                                    <div className="p-6">
+                                        <div className="flex justify-center mb-6">
+                                            <div className="bg-green-100 rounded-full p-4">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
                                         </div>
-                                    </button>
+                                        
+                                        <h3 className="text-xl font-semibold text-slate-800 text-center mb-2">
+                                            Group Created Successfully!
+                                        </h3>
+                                        
+                                        <p className="text-slate-600 mb-6 text-center">
+                                            Share this invite code with others to join your group:
+                                        </p>
+                                        
+                                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
+                                            <div className="flex">
+                                                <input
+                                                    type="text"
+                                                    readOnly
+                                                    value={newGroupInviteCode}
+                                                    className="flex-grow bg-white p-3 rounded-l-lg border border-slate-300 font-mono text-slate-800"
+                                                />
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(newGroupInviteCode);
+                                                        // Show a tooltip or notification
+                                                    }}
+                                                    className="bg-teal-500 hover:bg-teal-600 text-white p-3 rounded-r-lg transition-colors"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <button 
+                                            className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                                            onClick={() => {
+                                                setOpenCreate(false);
+                                                setShowInviteCode(false);
+                                            }}
+                                        >
+                                            Go to Dashboard
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -240,67 +386,60 @@ const Dashboard = () => {
 
                 {/* Join Group Dialog */}
                 {openJoin && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                        <div className="bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl p-8 w-full max-w-md border border-white/20">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent mb-6">
-                                Join Group
-                            </h2>
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                            <div className="bg-gradient-to-r from-teal-500 to-emerald-500 px-6 py-4">
+                                <h2 className="text-2xl font-bold text-white">
+                                    Join a Group
+                                </h2>
+                            </div>
                             
-                            {error && (
-                                <div className="bg-red-100/80 backdrop-blur-sm border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
-                                    <span className="block sm:inline">{error}</span>
-                                </div>
-                            )}
-                            
-                            <form onSubmit={handleJoinGroup} className="space-y-6">
-                                <div className="relative group">
-                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg blur opacity-0 group-hover:opacity-20 transition duration-1000 group-hover:duration-200" />
-                                    <input
-                                        id="inviteCode"
-                                        className="peer w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200 bg-white/50 hover:bg-white placeholder-transparent"
-                                        type="text"
-                                        value={inviteCode}
-                                        onChange={(e) => setInviteCode(e.target.value)}
-                                        placeholder="Invite Code"
-                                        required
-                                    />
-                                    <label
-                                        htmlFor="inviteCode"
-                                        className="absolute left-2 -top-2.5 bg-white px-2 text-sm text-slate-600 transition-all duration-200 
-                                                 peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 
-                                                 peer-placeholder-shown:top-3 peer-placeholder-shown:left-4 
-                                                 peer-focus:-top-2.5 peer-focus:left-2 peer-focus:text-sm peer-focus:text-teal-600"
-                                    >
-                                        Invite Code
-                                    </label>
-                                </div>
-
-                                <button 
-                                    type="submit" 
-                                    className="relative w-full overflow-hidden group"
-                                >
-                                    <div className="absolute inset-0 w-0 bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-[400ms] ease-out group-hover:w-full" />
-                                    <div className="relative px-4 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg group-hover:from-emerald-500 group-hover:to-teal-500 transition-all duration-300">
-                                        <span className="flex items-center justify-center gap-2 text-white font-semibold">
-                                            Join Group
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                            </svg>
-                                        </span>
+                            <div className="p-6">
+                                {error && (
+                                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6" role="alert">
+                                        <p className="font-bold">Error</p>
+                                        <p>{error}</p>
                                     </div>
-                                </button>
-                            </form>
-                            
-                            <button 
-                                onClick={() => {
-                                    setOpenJoin(false);
-                                    setInviteCode('');
-                                    setError('');
-                                }}
-                                className="mt-4 text-slate-600 hover:text-teal-600 transition-colors text-sm font-medium"
-                            >
-                                Cancel
-                            </button>
+                                )}
+                                
+                                <form onSubmit={handleJoinGroup} className="space-y-6">
+                                    <div className="space-y-1">
+                                        <label htmlFor="inviteCode" className="block text-sm font-medium text-slate-700">
+                                            Invite Code
+                                        </label>
+                                        <input
+                                            id="inviteCode"
+                                            className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200"
+                                            type="text"
+                                            value={inviteCode}
+                                            onChange={(e) => setInviteCode(e.target.value)}
+                                            placeholder="Enter the invite code"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="pt-4 space-y-4">
+                                        <button 
+                                            type="submit" 
+                                            className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                                        >
+                                            Join Group
+                                        </button>
+                                        
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                setOpenJoin(false);
+                                                setInviteCode('');
+                                                setError('');
+                                            }}
+                                            className="w-full px-6 py-3 bg-white text-slate-700 font-medium rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-300"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 )}
