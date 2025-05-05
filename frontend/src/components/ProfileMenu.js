@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 const ProfileMenu = () => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [user, setUser] = useState(null);
+    const [isMenuClosing, setIsMenuClosing] = useState(false);
     const navigate = useNavigate();
     const open = Boolean(anchorEl);
 
@@ -21,21 +22,28 @@ const ProfileMenu = () => {
 
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);
+        setIsMenuClosing(false);
     };
 
     const handleClose = () => {
-        setAnchorEl(null);
+        setIsMenuClosing(true);
+        setTimeout(() => {
+            setAnchorEl(null);
+            setIsMenuClosing(false);
+        }, 200);
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
+        handleClose();
+        setTimeout(() => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+        }, 200);
     };
 
     if (!user) return null;
 
-    // Get initials from user's name
     const getInitials = (name) => {
         return name
             .split(' ')
@@ -46,63 +54,88 @@ const ProfileMenu = () => {
 
     return (
         <>
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-white">
+            <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-slate-700">
                     {user.Name}
                 </span>
                 <button
                     onClick={handleClick}
-                    className="flex items-center justify-center rounded-full w-8 h-8 focus:outline-none"
+                    className="relative group"
                     aria-controls={open ? 'profile-menu' : undefined}
                     aria-haspopup="true"
                     aria-expanded={open ? 'true' : undefined}
                 >
-                    <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium">
-                        {getInitials(user.Name)}
+                    {/* Avatar Container with Gradient Border */}
+                    <div className="relative">
+                        {/* Gradient border animation */}
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full opacity-70 group-hover:opacity-100 blur transition-opacity duration-300" />
+                        
+                        {/* White background */}
+                        <div className="absolute inset-0 bg-white rounded-full" />
+                        
+                        {/* Avatar content */}
+                        <div className="relative w-10 h-10 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full flex items-center justify-center transform group-hover:scale-105 transition-transform duration-300">
+                            <span className="text-white text-sm font-semibold">
+                                {getInitials(user.Name)}
+                            </span>
+                        </div>
                     </div>
                 </button>
             </div>
 
             {open && (
-                <div className="fixed inset-0 z-50" onClick={handleClose}>
+                <div 
+                    className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm"
+                    onClick={handleClose}
+                >
                     <div 
-                        className="absolute bg-white rounded-md shadow-lg overflow-hidden w-56"
+                        className={`absolute bg-white/90 backdrop-blur-xl rounded-xl shadow-xl border border-white/20 overflow-hidden w-72 transition-all duration-300 ${isMenuClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
                         style={{
-                            top: anchorEl.getBoundingClientRect().bottom + window.scrollY,
+                            top: anchorEl.getBoundingClientRect().bottom + window.scrollY + 8,
                             right: window.innerWidth - anchorEl.getBoundingClientRect().right - 16,
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="py-1">
-                            <div className="px-4 py-2 flex items-center">
-                                <div className="mr-2 text-gray-500">
-                                    <PersonIcon fontSize="small" />
+                        {/* Profile Section */}
+                        <div className="p-4 bg-gradient-to-r from-teal-500/10 to-emerald-500/10">
+                            <div className="flex items-center gap-3">
+                                {/* Profile Avatar */}
+                                <div className="relative">
+                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full opacity-70 blur" />
+                                    <div className="relative w-12 h-12 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full flex items-center justify-center">
+                                        <span className="text-white font-semibold">
+                                            {getInitials(user.Name)}
+                                        </span>
+                                    </div>
                                 </div>
+                                
+                                {/* Profile Info */}
                                 <div>
-                                    <p className="text-sm font-medium text-gray-700">Profile</p>
-                                    <p className="text-xs text-gray-500">{user.Email}</p>
+                                    <p className="text-sm font-semibold text-slate-800">{user.Name}</p>
+                                    <p className="text-xs text-slate-500">{user.Email}</p>
                                 </div>
                             </div>
-                            
-                            <hr className="my-1 border-gray-200" />
-                            
+                        </div>
+                        
+                        <div className="p-2 space-y-1">
+                            {/* Menu Items */}
                             <button 
-                                className="px-4 py-2 flex items-center w-full text-left hover:bg-gray-100"
+                                className="w-full px-3 py-2 flex items-center gap-3 rounded-lg hover:bg-gradient-to-r from-teal-50 to-emerald-50 transition-colors duration-300 group"
                             >
-                                <div className="mr-2 text-gray-500">
+                                <div className="text-slate-500 group-hover:text-teal-600 transition-colors duration-300">
                                     <SettingsIcon fontSize="small" />
                                 </div>
-                                <span className="text-sm text-gray-700">Settings</span>
+                                <span className="text-sm text-slate-700 group-hover:text-teal-700 font-medium">Settings</span>
                             </button>
                             
                             <button 
-                                className="px-4 py-2 flex items-center w-full text-left hover:bg-gray-100"
+                                className="w-full px-3 py-2 flex items-center gap-3 rounded-lg hover:bg-red-50 transition-colors duration-300 group"
                                 onClick={handleLogout}
                             >
-                                <div className="mr-2 text-gray-500">
+                                <div className="text-slate-500 group-hover:text-red-600 transition-colors duration-300">
                                     <LogoutIcon fontSize="small" />
                                 </div>
-                                <span className="text-sm text-gray-700">Logout</span>
+                                <span className="text-sm text-slate-700 group-hover:text-red-600 font-medium">Logout</span>
                             </button>
                         </div>
                     </div>
