@@ -12,7 +12,9 @@
     <a href="#-installation">Installation</a> •
     <a href="#-project-structure">Project Structure</a> •
     <a href="#-database-schema">Database Schema</a> •
-    <a href="#-api-endpoints">API Endpoints</a>
+    <a href="#-api-endpoints">API Endpoints</a> •
+    <a href="#-contributors">Contributors</a> •
+    <a href="#-license">License</a>
   </p>
 </div>
 
@@ -376,19 +378,6 @@ RoomiePay/
 
 ---
 
-<div align="center">
-  <p>
-    <strong>RoomiePay</strong> — Making shared living expenses simpler since 2025
-  </p>
-  <p>
-    <a href="mailto:support@roomiepay.com">Contact Support</a> • 
-    <a href="#">Privacy Policy</a> • 
-    <a href="#">Terms of Service</a>
-  </p>
-</div>
-
----
-
 ## 👨‍💻 Contributors
 
 <div align="center">
@@ -445,3 +434,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+<div align="center">
+  <p>
+    <strong>RoomiePay</strong> — Making shared living expenses simpler since 2025
+  </p>
+  <p>
+    <a href="mailto:support@roomiepay.com">Contact Support</a> • 
+    <a href="#">Privacy Policy</a> • 
+    <a href="#">Terms of Service</a>
+  </p>
+</div>
