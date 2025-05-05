@@ -401,7 +401,7 @@ const Group = () => {
                         <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         <h3 className="text-sm font-medium text-slate-500 mb-1">Total Expenses</h3>
                         <p className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                            ${Number(settlementSummary?.TotalAmount || 0).toFixed(2)}
+                            ₹{Number(settlementSummary?.TotalAmount || 0).toFixed(2)}
                         </p>
                         <p className="text-sm text-slate-500 mt-2">
                             {expenses.length} transactions
@@ -413,7 +413,7 @@ const Group = () => {
                         <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         <h3 className="text-sm font-medium text-slate-500 mb-1">Per Person Share</h3>
                         <p className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                            ${(Number(settlementSummary?.TotalAmount || 0) / (balances.Members.length || 1)).toFixed(2)}
+                            ₹{(Number(settlementSummary?.TotalAmount || 0) / (balances.Members.length || 1)).toFixed(2)}
                         </p>
                         <p className="text-sm text-slate-500 mt-2">
                             Split among {balances.Members.length} members
@@ -473,19 +473,19 @@ const Group = () => {
                                     <div className="relative z-10">
                                         <h3 className="font-semibold text-xl text-slate-800 mb-3">{member.Name}</h3>
                                         <p className={`text-lg font-bold bg-gradient-to-r ${textClass} bg-clip-text text-transparent mb-4`}>
-                                            Net Balance: ${netBalance}
+                                            Net Balance: ₹{netBalance}
                                         </p>
                                         <div className="space-y-2 text-sm">
                                             <div className="flex justify-between items-center">
                                                 <span className="text-slate-600">Owes:</span>
                                                 <span className={parseFloat(owesAmount) > 0 ? "text-red-600 font-medium" : "text-slate-500"}>
-                                                    ${owesAmount}
+                                                    ₹{owesAmount}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-slate-600">Is Owed:</span>
                                                 <span className={parseFloat(isOwedAmount) > 0 ? "text-emerald-600 font-medium" : "text-slate-500"}>
-                                                    ${isOwedAmount}
+                                                    ₹{isOwedAmount}
                                                 </span>
                                             </div>
                                         </div>
@@ -530,7 +530,7 @@ const Group = () => {
                                     <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                     <h3 className="font-medium text-slate-800 mb-2">{payer}</h3>
                                     <p className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                                        ${Number(data.total).toFixed(2)}
+                                        ₹{Number(data.total).toFixed(2)}
                                     </p>
                                     <p className="text-sm text-slate-500 mt-1">
                                         {data.count} transaction{data.count !== 1 ? 's' : ''}
@@ -556,7 +556,7 @@ const Group = () => {
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-bold text-lg bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                                                    ${Number(expense.Amount).toFixed(2)}
+                                                    ₹{Number(expense.Amount).toFixed(2)}
                                                 </p>
                                                 <p className={`text-sm ${expense.IsSettled ? "text-emerald-600" : "text-amber-600"} font-medium`}>
                                                     {expense.IsSettled ? 'Settled' : 'Pending'}
@@ -685,7 +685,7 @@ const Group = () => {
                             <div className="bg-gradient-to-r from-teal-50 to-emerald-50 p-6 rounded-xl border border-teal-100">
                                 <h3 className="font-medium mb-2 text-teal-800">Total Settlements</h3>
                                 <p className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                                    ${Number(settlementSummary?.TotalAmount || 0).toFixed(2)}
+                                    ₹{Number(settlementSummary?.TotalAmount || 0).toFixed(2)}
                                 </p>
                                 <p className="text-sm text-teal-700 mt-1">
                                     Split among {balances.Members.length} members
@@ -704,7 +704,7 @@ const Group = () => {
                                                             {settlement.PayerName} → {settlement.ReceiverName}
                                                         </p>
                                                         <div className="text-sm text-slate-600 mt-1">
-                                                            <p>Amount: ${Number(settlement.Amount).toFixed(2)}</p>
+                                                            <p>Amount: ₹{Number(settlement.Amount).toFixed(2)}</p>
                                                             <p>Due: {new Date(settlement.DueDate).toLocaleDateString()}</p>
                                                         </div>
                                                     </div>

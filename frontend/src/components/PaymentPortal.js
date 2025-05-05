@@ -104,7 +104,7 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
                     <div className="mb-2 relative">
                         <p className="font-medium text-slate-700">Payment to: <span className="font-semibold text-slate-800">{settlement.ReceiverName}</span></p>
                         <p className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
-                            ${Number(settlement.Amount).toFixed(2)}
+                            ₹{Number(settlement.Amount).toFixed(2)}
                         </p>
                     </div>
                     <div className="flex items-center text-sm text-slate-600">
@@ -330,7 +330,7 @@ const PaymentPortal = ({ open, onClose, settlement, onPaymentComplete }) => {
                             <div className={`absolute inset-0 w-0 bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-[400ms] ease-out ${selectedMethod ? 'group-hover:w-full' : ''}`} />
                             <div className="relative px-4 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-lg group-hover:from-emerald-500 group-hover:to-teal-500 transition-all duration-300">
                                 <span className="flex items-center justify-center gap-2 text-white font-semibold">
-                                    Pay ${Number(settlement.Amount).toFixed(2)}
+                                    Pay ₹{Number(settlement.Amount).toFixed(2)}
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                     </svg>

@@ -54,6 +54,12 @@ const Notifications = () => {
                 if (a.IsRead !== b.IsRead) return a.IsRead ? 1 : -1;
                 return new Date(b.CreatedAt) - new Date(a.CreatedAt);
             });
+
+            // Update currency references in notification messages
+            sortedNotifications.forEach(notification => {
+                const message = notification.Message.replace(/\$(\d+(\.\d{1,2})?)/g, '₹$1');
+                notification.Message = message;
+            });
             
             setNotifications(sortedNotifications);
         } catch (error) {

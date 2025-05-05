@@ -216,7 +216,7 @@ const Settlements = ({ groupId }) => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.GroupName}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.PayerName}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.ReceiverName}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatAmount(settlement.Amount)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{formatAmount(settlement.Amount)}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(settlement.DueDate)}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -311,7 +311,7 @@ const Settlements = ({ groupId }) => {
                                                         >
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.PayerName}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.ReceiverName}</td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatAmount(settlement.Amount)}</td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{formatAmount(settlement.Amount)}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(settlement.DueDate)}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                 <motion.button
