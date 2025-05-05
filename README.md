@@ -386,3 +386,62 @@ RoomiePay/
     <a href="#">Terms of Service</a>
   </p>
 </div>
+
+---
+
+## 👨‍💻 Contributors
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <a href="https://github.com/madboy482">
+          <img src="https://github.com/madboy482.png" width="100px" alt="madboy482"/><br/>
+          <sub><b>madboy482</b></sub>
+        </a>
+      </td>
+      <td align="center">
+        <a href="https://github.com/bunnysunny24">
+          <img src="https://github.com/bunnysunny24.png" width="100px" alt="bunnysunny24"/><br/>
+          <sub><b>bunnysunny24</b></sub>
+        </a>
+      </td>
+      <td align="center">
+        <a href="https://github.com/renukag77">
+          <img src="https://github.com/renukag77.png" width="100px" alt="renukag77"/><br/>
+          <sub><b>renukag77</b></sub>
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+```
+MIT License
+
+Copyright (c) 2025 RoomiePay Team
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
