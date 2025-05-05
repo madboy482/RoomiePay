@@ -4,10 +4,11 @@ import { getNotifications, markNotificationRead, confirmSettlement } from '../se
 
 const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
-    const [anchorEl, setAnchorEl] = useState(null);
+    const [showNotifications, setShowNotifications] = useState(false);
     const [selectedNotification, setSelectedNotification] = useState(null);
     const [showPaymentDialog, setShowPaymentDialog] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('');
+    const notificationRef = React.useRef(null);
 
     useEffect(() => {
         loadNotifications();
@@ -15,6 +16,22 @@ const Notifications = () => {
         const interval = setInterval(loadNotifications, 60000);
         return () => clearInterval(interval);
     }, []);
+
+    // Add click event listener to document for handling outside clicks
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+        }
+
+        // Bind the event listener
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            // Unbind the event listener on clean up
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [notificationRef]);
 
     const loadNotifications = async () => {
         try {
@@ -25,18 +42,18 @@ const Notifications = () => {
         }
     };
 
-    const handleClick = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleClose = () => {
-        setAnchorEl(null);
+    const toggleNotifications = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Toggle notifications clicked");
+        setShowNotifications(prev => !prev);
     };
 
     const handleNotificationClick = async (notification) => {
         if (notification.Type === 'SETTLEMENT_DUE') {
             setSelectedNotification(notification);
             setShowPaymentDialog(true);
+            setShowNotifications(false);
         } else {
             await markNotificationAsRead(notification);
         }
@@ -67,60 +84,80 @@ const Notifications = () => {
     const unreadCount = notifications.filter(n => !n.IsRead).length;
 
     return (
-        <>
-            <button 
-                className="text-white p-2 rounded-full focus:outline-none relative"
-                onClick={handleClick}
+        <div ref={notificationRef} className="relative" style={{ zIndex: 9999 }}>
+            {/* Significantly larger clickable area */}
+            <div 
+                onClick={toggleNotifications}
+                className="p-3 cursor-pointer rounded-full hover:bg-teal-50 transition-colors"
+                style={{ 
+                    position: 'relative',
+                    zIndex: 9999
+                }}
             >
-                <NotificationsIcon />
-                {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
-                        {unreadCount}
-                    </span>
-                )}
-            </button>
+                {/* Visible icon */}
+                <div className="text-teal-600 flex items-center justify-center">
+                    <NotificationsIcon style={{ fontSize: 24 }} />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                            {unreadCount}
+                        </span>
+                    )}
+                </div>
+                
+                {/* Extra large invisible hitbox */}
+                <div 
+                    className="absolute inset-0 cursor-pointer" 
+                    style={{ 
+                        top: -10, 
+                        right: -10, 
+                        bottom: -10, 
+                        left: -10,
+                        zIndex: 9998 
+                    }}
+                    onClick={toggleNotifications}
+                    aria-hidden="true"
+                ></div>
+            </div>
             
-            {anchorEl && (
-                <div className="fixed inset-0 z-50" onClick={handleClose}>
-                    <div 
-                        className="absolute bg-white rounded-md shadow-lg overflow-hidden max-h-80 w-80"
-                        style={{
-                            top: anchorEl.getBoundingClientRect().bottom + window.scrollY,
-                            left: anchorEl.getBoundingClientRect().left + window.scrollX - 280, // Position to the left of icon
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="overflow-y-auto max-h-80">
-                            {notifications.length === 0 ? (
-                                <div className="px-4 py-3">
-                                    <p>No notifications</p>
-                                </div>
-                            ) : (
-                                notifications.map((notification) => (
-                                    <React.Fragment key={notification.NotificationID}>
-                                        <div 
-                                            className={`px-4 py-3 hover:bg-gray-100 cursor-pointer ${notification.IsRead ? 'bg-gray-50' : 'bg-white'}`}
-                                            onClick={() => handleNotificationClick(notification)}
-                                        >
-                                            <p className="text-sm font-medium text-gray-900">{notification.Message}</p>
-                                            <div className="text-xs text-gray-500 mt-1 flex items-center">
-                                                <span>{new Date(notification.CreatedAt).toLocaleString()}</span>
-                                                {notification.Type === 'SETTLEMENT_DUE' && (
-                                                    <span className="ml-2 text-red-500 font-medium">• Payment Required</span>
-                                                )}
-                                            </div>
+            {showNotifications && (
+                <div 
+                    className="absolute bg-white rounded-md shadow-lg overflow-hidden max-h-80 w-80 z-[9999]"
+                    style={{
+                        top: '100%',
+                        right: 0,
+                        marginTop: '8px',
+                    }}
+                >
+                    <div className="overflow-y-auto max-h-80">
+                        {notifications.length === 0 ? (
+                            <div className="px-4 py-3">
+                                <p>No notifications</p>
+                            </div>
+                        ) : (
+                            notifications.map((notification) => (
+                                <React.Fragment key={notification.NotificationID}>
+                                    <div 
+                                        className={`px-4 py-3 hover:bg-gray-100 cursor-pointer ${notification.IsRead ? 'bg-gray-50' : 'bg-white'}`}
+                                        onClick={() => handleNotificationClick(notification)}
+                                    >
+                                        <p className="text-sm font-medium text-gray-900">{notification.Message}</p>
+                                        <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                            <span>{new Date(notification.CreatedAt).toLocaleString()}</span>
+                                            {notification.Type === 'SETTLEMENT_DUE' && (
+                                                <span className="ml-2 text-red-500 font-medium">• Payment Required</span>
+                                            )}
                                         </div>
-                                        <hr className="border-gray-200" />
-                                    </React.Fragment>
-                                ))
-                            )}
-                        </div>
+                                    </div>
+                                    <hr className="border-gray-200" />
+                                </React.Fragment>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
 
             {showPaymentDialog && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md">
                         <h2 className="text-xl font-semibold mb-4">Confirm Payment</h2>
                         <p className="mb-4 text-gray-700">
@@ -158,7 +195,7 @@ const Notifications = () => {
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 };
 

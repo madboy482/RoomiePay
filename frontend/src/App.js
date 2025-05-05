@@ -97,11 +97,11 @@ const PrivateLayout = ({ children }) => {
                 {/* Actions Container */}
                 <div className="flex items-center gap-4 p-2 rounded-xl bg-white/80 backdrop-blur-sm border border-white/20
                               shadow-lg shadow-teal-500/5 hover:shadow-teal-500/10 transition-all duration-300">
-                  {/* Notifications */}
-                  <div className="relative group z-0">
-                    <div className="p-2 rounded-lg hover:bg-gradient-to-r from-teal-50 to-emerald-50 transition-all duration-300">
-                      <Notifications />
-                    </div>
+                  {/* Notifications - Updated z-index from z-0 to z-20 */}
+                  <div className="relative group z-20">
+                  <div style={{ position: 'relative', zIndex: 9999 }}>
+  <Notifications />
+</div>
                     <div className="absolute -inset-1 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 rounded-lg 
                                   opacity-0 group-hover:opacity-100 blur transition-all duration-300" />
                   </div>

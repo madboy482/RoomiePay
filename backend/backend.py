@@ -877,9 +877,9 @@ async def set_settlement_period(
         # Calculate next settlement time
         now = datetime.utcnow()
         if period.endswith('h'):
-            next_settlement = now + timedelta(hours(int(period[:-1])))
+            next_settlement = now + timedelta(hours=int(period[:-1]))
         elif period.endswith('d'):
-            next_settlement = now + timedelta(days(int(period[:-1])))
+            next_settlement = now + timedelta(days=int(period[:-1]))
         elif period.endswith('w'):
             next_settlement = now + timedelta(weeks=int(period[:-1]))
         elif period.endswith('m'):
@@ -1246,7 +1246,7 @@ async def check_settlements(background_tasks: BackgroundTasks):
                 
                 # Update next settlement time based on period
                 if period.Period.endswith('h'):
-                    period.NextSettlement = now + timedelta(hours(int(period.Period[:-1])))
+                    period.NextSettlement = now + timedelta(hours=int(period.Period[:-1]))
                 elif period.Period.endswith('d'):
                     period.NextSettlement = now + timedelta(days=int(period.Period[:-1]))
                 elif period.Period.endswith('w'):
