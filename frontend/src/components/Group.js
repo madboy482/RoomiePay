@@ -694,42 +694,44 @@ const Group = () => {
 
                             {/* Settlement List */}
                             {finalizedSettlements && finalizedSettlements.length > 0 ? (
-                                <div className="space-y-4">
-                                    {finalizedSettlements.map((settlement, index) => (
-                                        <div key={index} className="bg-white border rounded-xl p-4 hover:shadow-md transition-all duration-300">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="font-medium text-slate-800">
-                                                        {settlement.PayerName} → {settlement.ReceiverName}
-                                                    </p>
-                                                    <div className="text-sm text-slate-600 mt-1">
-                                                        <p>Amount: ${Number(settlement.Amount).toFixed(2)}</p>
-                                                        <p>Due: {new Date(settlement.DueDate).toLocaleDateString()}</p>
+                                <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="space-y-4">
+                                        {finalizedSettlements.map((settlement, index) => (
+                                            <div key={index} className="bg-white border rounded-xl p-4 hover:shadow-md transition-all duration-300">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-medium text-slate-800">
+                                                            {settlement.PayerName} → {settlement.ReceiverName}
+                                                        </p>
+                                                        <div className="text-sm text-slate-600 mt-1">
+                                                            <p>Amount: ${Number(settlement.Amount).toFixed(2)}</p>
+                                                            <p>Due: {new Date(settlement.DueDate).toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className={`px-3 py-1 text-sm rounded-full mb-2 ${
+                                                            settlement.Status === 'Pending' 
+                                                                ? 'bg-amber-100 text-amber-800' 
+                                                                : 'bg-emerald-100 text-emerald-800'
+                                                        }`}>
+                                                            {settlement.Status}
+                                                        </span>
+                                                        {settlement.Status === 'Pending' && settlement.PayerUserID === JSON.parse(localStorage.getItem('user')).UserID && (
+                                                            <button
+                                                                onClick={() => handlePayNow(settlement)}
+                                                                className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white px-4 py-2 text-sm rounded-lg transition-colors duration-300 flex items-center gap-1"
+                                                            >
+                                                                <span>Pay Now</span>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <div className="flex flex-col items-end">
-                                                    <span className={`px-3 py-1 text-sm rounded-full mb-2 ${
-                                                        settlement.Status === 'Pending' 
-                                                            ? 'bg-amber-100 text-amber-800' 
-                                                            : 'bg-emerald-100 text-emerald-800'
-                                                    }`}>
-                                                        {settlement.Status}
-                                                    </span>
-                                                    {settlement.Status === 'Pending' && settlement.PayerUserID === JSON.parse(localStorage.getItem('user')).UserID && (
-                                                        <button
-                                                            onClick={() => handlePayNow(settlement)}
-                                                            className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white px-4 py-2 text-sm rounded-lg transition-colors duration-300 flex items-center gap-1"
-                                                        >
-                                                            <span>Pay Now</span>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                            </svg>
-                                                        </button>
-                                                    )}
-                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             ) : (
                                 <p className="text-center text-slate-500 py-8">No settlements to display</p>
