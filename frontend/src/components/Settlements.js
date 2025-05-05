@@ -4,7 +4,7 @@ import { getSettlementHistory, processPayment, finalizeGroupSplits } from '../se
 import PaymentPortal from './PaymentPortal';
 
 const CurrentDateTime = () => {
-    const [dateTime, setDateTime] = useState('2025-05-05 04:57:23');
+    const [dateTime, setDateTime] = useState('2025-05-05 05:06:33');
     
     useEffect(() => {
         const timer = setInterval(() => {
@@ -102,8 +102,24 @@ const Settlements = ({ groupId }) => {
         loadSettlements();
     };
 
+    // Enhanced formatDate function from the first code
     const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString();
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
+    // Added formatAmount function from the first code
+    const formatAmount = (amount) => {
+        const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+        return typeof numAmount === 'number' && !isNaN(numAmount) 
+            ? numAmount.toFixed(2) 
+            : '0.00';
     };
 
     if (loading) {
@@ -200,7 +216,7 @@ const Settlements = ({ groupId }) => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.GroupName}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.PayerName}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.ReceiverName}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${settlement.Amount.toFixed(2)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatAmount(settlement.Amount)}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(settlement.DueDate)}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -295,7 +311,7 @@ const Settlements = ({ groupId }) => {
                                                         >
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.PayerName}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{settlement.ReceiverName}</td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${settlement.Amount.toFixed(2)}</td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${formatAmount(settlement.Amount)}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(settlement.DueDate)}</td>
                                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                 <motion.button
