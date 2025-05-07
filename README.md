@@ -442,8 +442,6 @@ SOFTWARE.
     <strong>RoomiePay</strong> — Making shared living expenses simpler since 2025
   </p>
   <p>
-    <a href="mailto:support@roomiepay.com">Contact Support</a> • 
-    <a href="#">Privacy Policy</a> • 
-    <a href="#">Terms of Service</a>
+    © 2025 • RoomiePay Team
   </p>
 </div>
